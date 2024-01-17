@@ -1,0 +1,25 @@
+syntax="proto3";
+
+package proto.conalg;
+
+option go_package="./pb";
+
+message FastPropose {
+  string c = 1;
+  uint64 ballot = 2;
+  uint64 time = 3;
+  repeated string whitelist = 4;
+}
+
+message FastProposeResponse {
+  string c = 1;
+  uint64 ballot = 2;
+  uint64 time = 3;
+  repeated string pred = 4;
+  bool result = 5;
+}
+
+
+service Conalg {
+  rpc FastProposeStream(stream FastPropose) returns (stream FastProposeResponse);
+}
