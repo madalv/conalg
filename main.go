@@ -1,32 +1,34 @@
 package main
 
 import (
-	"conalg/pb"
+	"conalg/config"
 	"conalg/transport"
 	"net"
 
 	"github.com/gookit/slog"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
 	// TODO init module with config & receptor
 
-	listener, err := net.Listen("tcp", "[::]:50000")
+	cfg, err := config.NewConfig()
 	if err != nil {
 		slog.Fatal(err)
 	}
 
-	// TODO read out of config
-	conn, err := grpc.Dial("localhost:50001", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	listener, err := net.Listen("tcp", cfg.Port)
 	if err != nil {
 		slog.Fatal(err)
 	}
 
-	defer conn.Close()
+	// conn, err := grpc.Dial("localhost:50001", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// if err != nil {
+	// 	slog.Fatal(err)
+	// }
 
-	client := pb.NewConalgClient(conn)
+	// defer conn.Close()
+
+	// client := pb.NewConalgClient(conn)
 	// client.FastProposeStream()
 
 	srv := transport.NewGRPCServer()

@@ -39,6 +39,7 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 			Pred:   nil,
 			Result: false,
 		})
+		
 		if err != nil {
 			return err
 		}

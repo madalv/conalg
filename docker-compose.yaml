@@ -1,0 +1,27 @@
+services:
+  node1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - node1.env
+    ports:
+      - 50001:50001
+
+  node2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - node2.env
+    ports:
+      - 50002:50002
+
+  node3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - node3.env
+    ports:
+      - 50003:50003

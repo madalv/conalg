@@ -19,11 +19,8 @@ type Status struct {
 	forced    bool
 }
 
-// map of commands and their status 
+// map of commands and their status
 var history map[string]Status
 
 // array mapping command c to its ballot nr
 var ballots map[string]uint
-
-
-
