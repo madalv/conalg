@@ -20,6 +20,7 @@ type Status struct {
 }
 
 // map of commands and their status
+// TODO private kv store -- memcache?
 var history map[string]Status
 
 // array mapping command c to its ballot nr

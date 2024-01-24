@@ -4,8 +4,6 @@ import (
 	"math"
 	"os"
 	"strings"
-
-	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -15,8 +13,8 @@ type Config struct {
 	Nodes         []string
 }
 
-func NewConfig() (Config, error) {
-	err := godotenv.Load()
+func NewConfig() Config {
+	// err := godotenv.Load()
 
 	port := os.Getenv("PORT")
 	nodes := os.Getenv("NODES")
@@ -34,9 +32,6 @@ func NewConfig() (Config, error) {
 		ClassicQuorum: uint(classicQuorum),
 		FastQuorum:    uint(fastQuorum),
 	}
-	if err != nil {
-		return Config{}, err
-	}
 
-	return cfg, nil
+	return cfg
 }

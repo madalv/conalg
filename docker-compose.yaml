@@ -1,26 +1,26 @@
+version: "3.8"
+
 services:
   node1:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    container_name: node1
+    build: .
+    image: madalv/conalg:latest
     env_file:
       - node1.env
     ports:
       - 50001:50001
 
   node2:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    container_name: node2
+    image: madalv/conalg:latest
     env_file:
       - node2.env
     ports:
       - 50002:50002
 
   node3:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    container_name: node3
+    image: madalv/conalg:latest
     env_file:
       - node3.env
     ports:

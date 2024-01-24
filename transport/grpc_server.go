@@ -2,9 +2,10 @@ package transport
 
 import (
 	"conalg/pb"
-	"google.golang.org/grpc"
 	"io"
-	"log/slog"
+
+	"github.com/gookit/slog"
+	"google.golang.org/grpc"
 )
 
 type grpcServer struct {
@@ -12,7 +13,7 @@ type grpcServer struct {
 }
 
 func NewGRPCServer() *grpc.Server {
-	slog.Info("Initializing gRPC Server")
+	slog.Infof("Initializing gRPC Server")
 	s := grpc.NewServer()
 
 	pb.RegisterConalgServer(s, &grpcServer{})
@@ -20,7 +21,6 @@ func NewGRPCServer() *grpc.Server {
 }
 
 func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServer) error {
-	slog.Info("Starting Fast Propose Stream Server")
 
 	for {
 		msg, err := stream.Recv()
@@ -31,7 +31,7 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 			return err
 		}
 
-		slog.Debug(msg.C)
+		slog.Infof("Received Fast Propose: %v", msg)
 		err = stream.Send(&pb.FastProposeResponse{
 			C:      msg.C,
 			Ballot: msg.Ballot,
@@ -39,7 +39,7 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 			Pred:   nil,
 			Result: false,
 		})
-		
+
 		if err != nil {
 			return err
 		}

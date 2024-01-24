@@ -3,7 +3,7 @@ package main
 import (
 	"conalg/config"
 	"conalg/transport"
-	"net"
+	"time"
 
 	"github.com/gookit/slog"
 )
@@ -11,28 +11,21 @@ import (
 func main() {
 	// TODO init module with config & receptor
 
-	cfg, err := config.NewConfig()
+	cfg := config.NewConfig()
+
+	transport, err := transport.NewGRPCTransport(cfg.Nodes, cfg.Port)
 	if err != nil {
 		slog.Fatal(err)
 	}
 
-	listener, err := net.Listen("tcp", cfg.Port)
-	if err != nil {
-		slog.Fatal(err)
-	}
+	slog.Debug(cfg)
 
-	// conn, err := grpc.Dial("localhost:50001", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	// if err != nil {
-	// 	slog.Fatal(err)
-	// }
+	go func() {
+		time.Sleep(1 * time.Second)
+		transport.ConnectToNodes(cfg.Nodes)
 
-	// defer conn.Close()
+		transport.BroadcastFastPropose("test", 0, 1)
+	}()
 
-	// client := pb.NewConalgClient(conn)
-	// client.FastProposeStream()
-
-	srv := transport.NewGRPCServer()
-	if err := srv.Serve(listener); err != nil {
-		slog.Fatal(err)
-	}
+	transport.RunServer(cfg.Port)
 }
