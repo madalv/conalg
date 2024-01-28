@@ -20,7 +20,7 @@ type grpcTransport struct {
 }
 
 func NewGRPCTransport(nodes []string, port string) (*grpcTransport, error) {
-	slog.Info("Initializing GRPC Transport")
+	slog.Info("Initializing gRPC Transport Module")
 
 	return &grpcTransport{
 		clients: []*grpcClient{},

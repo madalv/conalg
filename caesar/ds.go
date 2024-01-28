@@ -1,5 +1,6 @@
-package main
+package caesar
 
+// TODO reformat this shit into a module
 const (
 	FAST_PEND = "FAST_PENDING"
 	SLOW_PEND = "SLOW PENDING"
@@ -7,9 +8,6 @@ const (
 	REJ       = "REJECTED"
 	STABLE    = "STABLE"
 )
-
-// logical clock
-var global_ts = uint(0)
 
 type Status struct {
 	timestamp uint
@@ -20,7 +18,7 @@ type Status struct {
 }
 
 // map of commands and their status
-// TODO private kv store -- memcache?
+// TODO private kv store
 var history map[string]Status
 
 // array mapping command c to its ballot nr

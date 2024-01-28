@@ -1,6 +1,7 @@
 package main
 
 import (
+	"conalg/caesar"
 	"conalg/config"
 	"conalg/transport"
 	"time"
@@ -12,6 +13,8 @@ func main() {
 	// TODO init module with config & receptor
 
 	cfg := config.NewConfig()
+
+	_ = caesar.NewClock(uint64(len(cfg.Nodes)))
 
 	transport, err := transport.NewGRPCTransport(cfg.Nodes, cfg.Port)
 	if err != nil {
