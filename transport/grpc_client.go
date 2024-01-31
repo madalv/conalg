@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"conalg/caesar"
 	"conalg/pb"
 	"context"
 
@@ -11,8 +12,8 @@ import (
 
 type grpcClient struct {
 	pb.ConalgClient
-	fastProposeChan chan *pb.FastPropose
-	address         string
+	fastProposeStream pb.Conalg_FastProposeStreamClient
+	address           string
 }
 
 func newGRPCClient(addr string) (*grpcClient, error) {
@@ -25,31 +26,24 @@ func newGRPCClient(addr string) (*grpcClient, error) {
 	client := pb.NewConalgClient(conn)
 	client.FastProposeStream(context.Background())
 
-	c := &grpcClient{
-		client,
-		make(chan *pb.FastPropose),
-		addr,
-	}
-
-	go func() {
-		c.initFastProposeStream()
-	}()
-
-	return c, nil
-}
-
-func (c *grpcClient) initFastProposeStream() {
-	slog.Infof("Initializing Fast Propose Stream on %s", c.address)
-
-	stream, err := c.FastProposeStream(context.Background())
+	slog.Infof("Initializing Fast Propose Stream on %s", addr)
+	fpStream, err := client.FastProposeStream(context.Background())
 	if err != nil {
 		slog.Fatal(err)
 	}
 
-	for msg := range c.fastProposeChan {
-		err = stream.Send(msg)
-		if err != nil {
-			slog.Error(err)
-		}
+	c := &grpcClient{
+		client,
+		fpStream,
+		addr,
+	}
+
+	return c, nil
+}
+
+func (c *grpcClient) sendFastProposeStream(req *caesar.Request) {
+	err := c.fastProposeStream.Send(req.ToFastProposePb())
+	if err != nil {
+		slog.Error(err)
 	}
 }
