@@ -20,8 +20,8 @@ type Application interface {
 
 type Transport interface {
 	BroadcastFastPropose(req *Request)
-	RunServer(port string) error
-	ConnectToNodes(nodes []string) error
+	RunServer() error
+	ConnectToNodes() error
 }
 
 type Caesar struct {
@@ -55,19 +55,78 @@ func (c *Caesar) Propose(payload []byte) {
 		Status:       WAITING,
 		Ballot:       0,
 		Forced:       false,
-		ResponseChan: make(chan Response),
+		ResponseChan: make(chan Response, c.cfg.FastQuorum),
 		ProposeTime:  time.Now(),
+		Proposer:     c.cfg.ID,
 	}
 
-	slog.Infof("Proposing %s", req)
+	slog.Debugf("Proposing %s", req)
 
 	c.history[req.ID] = req
+	go c.FastPropose(&req)
 }
 
-// TODO timeout :3
+// TODO what the fuck is up with the damn timeout??
 func (c *Caesar) FastPropose(req *Request) {
-	slog.Infof("Fast Proposing %s", req)
+	slog.Debugf("Fast Proposing %s", req)
 
-	c.ballots[req.ID] = 0
+	replies := map[string]Response{}
+	maxTimestamp := req.Timestamp
+	pred := gs.NewSet[string]()
+
 	c.transport.BroadcastFastPropose(req)
+
+	
+	select {
+	case reply := <-req.ResponseChan:
+		slog.Debugf("Received %s for req %s", reply, req.ID)
+
+		if _, ok := replies[reply.From]; ok {
+			slog.Warnf("Received duplicate reply %s for req %s", reply, req.ID)
+		} else {
+			replies[reply.From] = reply
+		}
+
+		if reply.Timestamp > maxTimestamp {
+			maxTimestamp = reply.Timestamp
+		}
+
+		pred.Union(reply.Pred)
+
+		slog.Debug(pred)
+		slog.Debug(maxTimestamp)
+
+		if repliesHaveNack(replies) {
+			req.Timestamp = maxTimestamp
+			req.Pred = pred
+			slog.Debugf("REPLIES have NACK. must RETRY.  req %s\n Replies: \n %s", req, replies)
+			
+			// TODO retry
+			return
+		} else if len(replies) == c.cfg.FastQuorum {
+			req.Timestamp = maxTimestamp
+			req.Pred = pred
+			slog.Debugf("FQ REACHED ----- %s. \n Replies: \n %s", req, replies)
+			// TODO stable
+			return
+		} else if len(replies) == c.cfg.ClassicQuorum {
+			req.Timestamp = maxTimestamp
+			req.Pred = pred
+			// TODO send slow propose
+			slog.Debugf("CQ REACHED ----- %s. \n Replies: \n %s", req, replies)
+			return
+		}
+
+	case <-time.After(30 * time.Second):
+		slog.Warnf("Fast Propose timed out for req %s, DO SMTH??", req.ID)
+	}
+}
+
+func repliesHaveNack(replies map[string]Response) bool {
+	for _, reply := range replies {
+		if reply.Status == NACK {
+			return true
+		}
+	}
+	return false
 }

@@ -10,12 +10,18 @@ import (
 )
 
 // TODO add start/end times for requests to track
-// done? remove channels from grpc clients, use ch per stream
+
+
+/*
+Qs:
+- what happens if stable msg not received by all nodes?
+- how much should the timeout for fast propose be? what exactly happens if it times out?
+*/
 
 func main() {
 	cfg := config.NewConfig()
 
-	transport, err := transport.NewGRPCTransport(cfg.Nodes, cfg.Port)
+	transport, err := transport.NewGRPCTransport(cfg)
 	if err != nil {
 		slog.Fatal(err)
 	}
@@ -26,12 +32,10 @@ func main() {
 
 	go func() {
 		time.Sleep(1 * time.Second)
-		transport.ConnectToNodes(cfg.Nodes)
-
-		// transport.BroadcastFastPropose("test", 0, 1)
+		transport.ConnectToNodes()
 	}()
 
-	err = transport.RunServer(cfg.Port)
+	err = transport.RunServer()
 	if err != nil {
 		slog.Fatal(err)
 	}

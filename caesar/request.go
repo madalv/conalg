@@ -17,6 +17,7 @@ const (
 )
 
 type Request struct {
+	Proposer     string
 	ID           string
 	Payload      []byte
 	Timestamp    uint64

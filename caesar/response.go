@@ -10,6 +10,7 @@ const (
 )
 
 type Response struct {
+	From      string
 	ID        string
 	Type      string // FASTP_REPLY or SLOWP_REPLY
 	Status    string // ACK or NACK

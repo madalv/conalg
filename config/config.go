@@ -7,10 +7,11 @@ import (
 )
 
 type Config struct {
-	FastQuorum    uint
-	ClassicQuorum uint
+	FastQuorum    int
+	ClassicQuorum int
 	Port          string
 	Nodes         []string
+	ID            string
 }
 
 func NewConfig() Config {
@@ -18,6 +19,7 @@ func NewConfig() Config {
 
 	port := os.Getenv("PORT")
 	nodes := os.Getenv("NODES")
+	id := os.Getenv("ID")
 	nodesSplit := strings.Split(nodes, ",")
 	nrNodes := float64(len(nodesSplit))
 
@@ -29,8 +31,9 @@ func NewConfig() Config {
 	cfg := Config{
 		Nodes:         nodesSplit,
 		Port:          port,
-		ClassicQuorum: uint(classicQuorum),
-		FastQuorum:    uint(fastQuorum),
+		ClassicQuorum: int(classicQuorum),
+		FastQuorum:    int(fastQuorum),
+		ID:            id,
 	}
 
 	return cfg

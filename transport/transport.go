@@ -2,6 +2,7 @@ package transport
 
 import (
 	"conalg/caesar"
+	"conalg/config"
 	"net"
 
 	"github.com/gookit/slog"
@@ -12,15 +13,17 @@ type grpcTransport struct {
 	clients         []*grpcClient
 	server          *grpc.Server
 	fastProposeChan chan *caesar.Request
+	cfg             config.Config
 }
 
-func NewGRPCTransport(nodes []string, port string) (*grpcTransport, error) {
+func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
 	slog.Info("Initializing gRPC Transport Module")
 
 	module := &grpcTransport{
 		clients:         []*grpcClient{},
 		server:          NewGRPCServer(),
 		fastProposeChan: make(chan *caesar.Request, 100),
+		cfg:             cfg,
 	}
 
 	go module.ListenToChannels()
@@ -37,8 +40,8 @@ func (t *grpcTransport) ListenToChannels() {
 	}
 }
 
-func (t *grpcTransport) RunServer(port string) error {
-	listener, err := net.Listen("tcp", port)
+func (t *grpcTransport) RunServer() error {
+	listener, err := net.Listen("tcp", t.cfg.Port)
 	if err != nil {
 		return err
 	}
@@ -53,10 +56,10 @@ func (t *grpcTransport) BroadcastFastPropose(req *caesar.Request) {
 	t.fastProposeChan <- req
 }
 
-func (t *grpcTransport) ConnectToNodes(nodes []string) error {
+func (t *grpcTransport) ConnectToNodes() error {
 	slog.Info("Connecting to nodes")
-	clients := make([]*grpcClient, 0, len(nodes))
-	for _, node := range nodes {
+	clients := make([]*grpcClient, 0, len(t.cfg.Nodes)+1)
+	for _, node := range t.cfg.Nodes {
 		c, err := newGRPCClient(node)
 
 		if err != nil {
@@ -65,6 +68,14 @@ func (t *grpcTransport) ConnectToNodes(nodes []string) error {
 
 		clients = append(clients, c)
 	}
+
+	c, err := newGRPCClient(t.cfg.Port)
+	if err != nil {
+		return err
+	}
+
+	clients = append(clients, c)
+	slog.Debug(clients)
 
 	t.clients = clients
 	return nil
