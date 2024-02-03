@@ -6,6 +6,7 @@ require (
 	github.com/deckarep/golang-set/v2 v2.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gookit/slog v0.5.4
+	github.com/orcaman/concurrent-map/v2 v2.0.1
 	google.golang.org/grpc v1.60.1
 	google.golang.org/protobuf v1.32.0
 )

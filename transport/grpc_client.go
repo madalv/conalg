@@ -10,13 +10,23 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+/*
+Receiver is an interface that defines the methods through
+which the transport module servesthe reponses back to
+the consensus module (aka Caesar module)
+*/
+type Receiver interface {
+	ReceiveFastProposeResponse(caesar.Response)
+}
+
 type grpcClient struct {
 	pb.ConalgClient
 	fastProposeStream pb.Conalg_FastProposeStreamClient
 	address           string
+	receiver          Receiver
 }
 
-func newGRPCClient(addr string) (*grpcClient, error) {
+func newGRPCClient(addr string, rec Receiver) (*grpcClient, error) {
 	slog.Infof("Starting Client on %s", addr)
 	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -36,14 +46,27 @@ func newGRPCClient(addr string) (*grpcClient, error) {
 		client,
 		fpStream,
 		addr,
+		rec,
 	}
 
+	go c.receiveFastProposeResponse()
 	return c, nil
 }
 
-func (c *grpcClient) sendFastProposeStream(req *caesar.Request) {
+func (c *grpcClient) sendFastPropose(req *caesar.Request) {
 	err := c.fastProposeStream.Send(req.ToFastProposePb())
 	if err != nil {
 		slog.Error(err)
+	}
+}
+
+func (c *grpcClient) receiveFastProposeResponse() {
+	for {
+		msg, err := c.fastProposeStream.Recv()
+		if err != nil {
+			slog.Error(err)
+		}
+		slog.Debugf("Received Fast Propose Response: %v", msg)
+		c.receiver.ReceiveFastProposeResponse(caesar.FromFastProposeResponse(msg))
 	}
 }

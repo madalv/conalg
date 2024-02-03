@@ -5,6 +5,7 @@ import (
 	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
+	"github.com/google/uuid"
 )
 
 const (
@@ -30,9 +31,24 @@ type Request struct {
 	ResponseChan chan Response
 }
 
+func NewRequest(payload []byte, ts uint64, fq int, proposer string) Request {
+	return Request{
+		ID:           uuid.NewString(),
+		Payload:      payload,
+		Timestamp:    ts,
+		Pred:         gs.NewSet[string](),
+		Status:       WAITING,
+		Ballot:       0,
+		Forced:       false,
+		ResponseChan: make(chan Response, fq),
+		ProposeTime:  time.Now(),
+		Proposer:     proposer,
+	}
+}
+
 func (r *Request) ToFastProposePb() *pb.FastPropose {
 	return &pb.FastPropose{
-		Id:        r.ID,
+		RequestId: r.ID,
 		Payload:   r.Payload,
 		Time:      r.Timestamp,
 		Whitelist: nil,

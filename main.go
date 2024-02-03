@@ -11,7 +11,6 @@ import (
 
 // TODO add start/end times for requests to track
 
-
 /*
 Qs:
 - what happens if stable msg not received by all nodes?
@@ -20,15 +19,16 @@ Qs:
 
 func main() {
 	cfg := config.NewConfig()
+	slog.Debug(cfg)
 
 	transport, err := transport.NewGRPCTransport(cfg)
 	if err != nil {
 		slog.Fatal(err)
 	}
 
-	_ = caesar.NewCaesar(cfg, transport)
+	caesarModule := caesar.NewCaesar(cfg, transport)
 
-	slog.Debug(cfg)
+	transport.SetReceiver(caesarModule)
 
 	go func() {
 		time.Sleep(1 * time.Second)

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
-	"github.com/google/uuid"
 	"github.com/gookit/slog"
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 type Conalg interface {
@@ -26,8 +26,7 @@ type Transport interface {
 
 type Caesar struct {
 	// map of commands and their status
-	// TODO private kv store
-	history map[string]Request
+	history cmap.ConcurrentMap[string, Request]
 	// array mapping command c to its ballot nr
 	ballots   map[string]uint
 	clock     *Clock
@@ -37,8 +36,9 @@ type Caesar struct {
 
 func NewCaesar(cfg config.Config, transport Transport) *Caesar {
 	slog.Info("Initializing Caesar Module")
+
 	return &Caesar{
-		history:   make(map[string]Request),
+		history:   cmap.New[Request](),
 		ballots:   make(map[string]uint),
 		clock:     NewClock(uint64(len(cfg.Nodes))),
 		cfg:       cfg,
@@ -46,37 +46,33 @@ func NewCaesar(cfg config.Config, transport Transport) *Caesar {
 	}
 }
 
-func (c *Caesar) Propose(payload []byte) {
-	req := Request{
-		ID:           uuid.NewString(),
-		Payload:      payload,
-		Timestamp:    c.clock.NewTimestamp(),
-		Pred:         gs.NewSet[string](),
-		Status:       WAITING,
-		Ballot:       0,
-		Forced:       false,
-		ResponseChan: make(chan Response, c.cfg.FastQuorum),
-		ProposeTime:  time.Now(),
-		Proposer:     c.cfg.ID,
+func (c *Caesar) ReceiveFastProposeResponse(r Response) {
+	req, ok := c.history.Get(r.RequestID)
+	if !ok {
+		slog.Warnf("Received response for unknown request %s", r.RequestID)
+		return
 	}
 
-	slog.Debugf("Proposing %s", req)
+	req.ResponseChan <- r
+}
 
-	c.history[req.ID] = req
-	go c.FastPropose(&req)
+func (c *Caesar) Propose(payload []byte) {
+	req := NewRequest(payload, c.clock.NewTimestamp(), c.cfg.FastQuorum, c.cfg.ID)
+	slog.Debugf("Proposing %s", req)
+	c.history.Set(req.ID, req)
+	go c.FastPropose(req)
 }
 
 // TODO what the fuck is up with the damn timeout??
-func (c *Caesar) FastPropose(req *Request) {
+func (c *Caesar) FastPropose(req Request) {
 	slog.Debugf("Fast Proposing %s", req)
 
 	replies := map[string]Response{}
 	maxTimestamp := req.Timestamp
 	pred := gs.NewSet[string]()
 
-	c.transport.BroadcastFastPropose(req)
+	c.transport.BroadcastFastPropose(&req)
 
-	
 	select {
 	case reply := <-req.ResponseChan:
 		slog.Debugf("Received %s for req %s", reply, req.ID)
@@ -99,19 +95,22 @@ func (c *Caesar) FastPropose(req *Request) {
 		if repliesHaveNack(replies) {
 			req.Timestamp = maxTimestamp
 			req.Pred = pred
+			c.history.Set(req.ID, req)
 			slog.Debugf("REPLIES have NACK. must RETRY.  req %s\n Replies: \n %s", req, replies)
-			
+
 			// TODO retry
 			return
 		} else if len(replies) == c.cfg.FastQuorum {
 			req.Timestamp = maxTimestamp
 			req.Pred = pred
+			c.history.Set(req.ID, req)
 			slog.Debugf("FQ REACHED ----- %s. \n Replies: \n %s", req, replies)
 			// TODO stable
 			return
 		} else if len(replies) == c.cfg.ClassicQuorum {
 			req.Timestamp = maxTimestamp
 			req.Pred = pred
+			c.history.Set(req.ID, req)
 			// TODO send slow propose
 			slog.Debugf("CQ REACHED ----- %s. \n Replies: \n %s", req, replies)
 			return
@@ -124,7 +123,7 @@ func (c *Caesar) FastPropose(req *Request) {
 
 func repliesHaveNack(replies map[string]Response) bool {
 	for _, reply := range replies {
-		if reply.Status == NACK {
+		if !reply.Status {
 			return true
 		}
 	}

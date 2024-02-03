@@ -9,11 +9,13 @@ import (
 	"google.golang.org/grpc"
 )
 
+
 type grpcTransport struct {
 	clients         []*grpcClient
 	server          *grpc.Server
 	fastProposeChan chan *caesar.Request
 	cfg             config.Config
+	receiver        Receiver
 }
 
 func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
@@ -31,11 +33,15 @@ func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
 	return module, nil
 }
 
+func(t *grpcTransport) SetReceiver(r Receiver) {
+	t.receiver = r
+}
+
 func (t *grpcTransport) ListenToChannels() {
 	for req := range t.fastProposeChan {
 		slog.Info("Broadcasting Fast Propose")
 		for _, client := range t.clients {
-			client.sendFastProposeStream(req)
+			client.sendFastPropose(req)
 		}
 	}
 }
@@ -60,7 +66,7 @@ func (t *grpcTransport) ConnectToNodes() error {
 	slog.Info("Connecting to nodes")
 	clients := make([]*grpcClient, 0, len(t.cfg.Nodes)+1)
 	for _, node := range t.cfg.Nodes {
-		c, err := newGRPCClient(node)
+		c, err := newGRPCClient(node, t.receiver)
 
 		if err != nil {
 			return err
@@ -69,7 +75,7 @@ func (t *grpcTransport) ConnectToNodes() error {
 		clients = append(clients, c)
 	}
 
-	c, err := newGRPCClient(t.cfg.Port)
+	c, err := newGRPCClient(t.cfg.Port, t.receiver)
 	if err != nil {
 		return err
 	}
