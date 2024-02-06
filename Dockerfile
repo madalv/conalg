@@ -1,5 +1,7 @@
 FROM golang:1.21-bullseye as builder
 
+LABEL commit-msg=$COMMIT_MSG
+
 WORKDIR /app
 COPY go.mod .
 COPY go.sum .

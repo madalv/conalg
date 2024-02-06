@@ -1,7 +1,7 @@
 package transport
 
 import (
-	"conalg/caesar"
+	"conalg/models"
 	"conalg/pb"
 	"context"
 
@@ -16,7 +16,7 @@ which the transport module servesthe reponses back to
 the consensus module (aka Caesar module)
 */
 type Receiver interface {
-	ReceiveFastProposeResponse(caesar.Response)
+	ReceiveFastProposeResponse(models.Response)
 }
 
 type grpcClient struct {
@@ -53,7 +53,7 @@ func newGRPCClient(addr string, rec Receiver) (*grpcClient, error) {
 	return c, nil
 }
 
-func (c *grpcClient) sendFastPropose(req *caesar.Request) {
+func (c *grpcClient) sendFastPropose(req *models.Request) {
 	err := c.fastProposeStream.Send(req.ToFastProposePb())
 	if err != nil {
 		slog.Error(err)
@@ -67,6 +67,6 @@ func (c *grpcClient) receiveFastProposeResponse() {
 			slog.Error(err)
 		}
 		slog.Debugf("Received Fast Propose Response: %v", msg)
-		c.receiver.ReceiveFastProposeResponse(caesar.FromFastProposeResponse(msg))
+		c.receiver.ReceiveFastProposeResponse(models.FromFastProposeResponse(msg))
 	}
 }

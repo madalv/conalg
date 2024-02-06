@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"conalg/config"
 	"conalg/pb"
 	"io"
 
@@ -10,13 +11,14 @@ import (
 
 type grpcServer struct {
 	pb.ConalgServer
+	cfg config.Config
 }
 
-func NewGRPCServer() *grpc.Server {
+func NewGRPCServer(cfg config.Config) *grpc.Server {
 	slog.Infof("Initializing gRPC Server")
 	s := grpc.NewServer()
 
-	pb.RegisterConalgServer(s, &grpcServer{})
+	pb.RegisterConalgServer(s, &grpcServer{cfg: cfg})
 	return s
 }
 
@@ -32,12 +34,14 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 		}
 
 		slog.Infof("Received Fast Propose: %v", msg)
-		
+
 		err = stream.Send(&pb.FastProposeResponse{
-			Ballot: msg.Ballot,
-			Time:   msg.Time,
-			Pred:   nil,
-			Result: true,
+			ResquestId: msg.RequestId,
+			Ballot:     msg.Ballot,
+			Time:       msg.Time,
+			Pred:       nil,
+			Result:     true,
+			From:       srv.cfg.ID,
 		})
 
 		if err != nil {

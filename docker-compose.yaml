@@ -4,24 +4,27 @@ services:
   node1:
     container_name: node1
     build: .
-    image: madalv/conalg:latest
+    image: madalv/conalg:0.1.0
     env_file:
       - node1.env
     ports:
       - 50001:50001
+      - 8081:8081
 
   node2:
     container_name: node2
-    image: madalv/conalg:latest
+    image: madalv/conalg:0.1.0
     env_file:
       - node2.env
     ports:
       - 50002:50002
+      - 8082:8082
 
   node3:
     container_name: node3
-    image: madalv/conalg:latest
+    image: madalv/conalg:0.1.0
     env_file:
       - node3.env
     ports:
       - 50003:50003
+      - 8083:8083

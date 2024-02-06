@@ -1,4 +1,4 @@
-package caesar
+package models
 
 import (
 	"conalg/pb"

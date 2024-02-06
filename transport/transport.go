@@ -1,19 +1,18 @@
 package transport
 
 import (
-	"conalg/caesar"
 	"conalg/config"
+	"conalg/models"
 	"net"
 
 	"github.com/gookit/slog"
 	"google.golang.org/grpc"
 )
 
-
 type grpcTransport struct {
 	clients         []*grpcClient
 	server          *grpc.Server
-	fastProposeChan chan *caesar.Request
+	fastProposeChan chan *models.Request
 	cfg             config.Config
 	receiver        Receiver
 }
@@ -23,8 +22,8 @@ func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
 
 	module := &grpcTransport{
 		clients:         []*grpcClient{},
-		server:          NewGRPCServer(),
-		fastProposeChan: make(chan *caesar.Request, 100),
+		server:          NewGRPCServer(cfg),
+		fastProposeChan: make(chan *models.Request, 100),
 		cfg:             cfg,
 	}
 
@@ -33,7 +32,7 @@ func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
 	return module, nil
 }
 
-func(t *grpcTransport) SetReceiver(r Receiver) {
+func (t *grpcTransport) SetReceiver(r Receiver) {
 	t.receiver = r
 }
 
@@ -58,7 +57,7 @@ func (t *grpcTransport) RunServer() error {
 	return nil
 }
 
-func (t *grpcTransport) BroadcastFastPropose(req *caesar.Request) {
+func (t *grpcTransport) BroadcastFastPropose(req *models.Request) {
 	t.fastProposeChan <- req
 }
 

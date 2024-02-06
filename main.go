@@ -2,10 +2,10 @@ package main
 
 import (
 	"conalg/caesar"
-	"conalg/config"
-	"conalg/transport"
-	"time"
+	"math/rand"
+	"os"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gookit/slog"
 )
 
@@ -17,26 +17,49 @@ Qs:
 - how much should the timeout for fast propose be? what exactly happens if it times out?
 */
 
+// TODO move this bs somewhere else
+type SampleApp struct {
+	conalg caesar.Conalg
+}
+
+func (s *SampleApp) DetermineConflict(c1, c2 []byte) bool {
+	if rand.Intn(100) < 50 {
+		return true
+	} else {
+		return false
+	}
+}
+
+func (s *SampleApp) Execute(c []byte) {
+	slog.Infof(" ... doing whatever i want with %s", c)
+}
+
+func (s *SampleApp) SetConalgModule(m caesar.Conalg) {
+	s.conalg = m
+}
+
 func main() {
-	cfg := config.NewConfig()
-	slog.Debug(cfg)
 
-	transport, err := transport.NewGRPCTransport(cfg)
-	if err != nil {
-		slog.Fatal(err)
-	}
+	app := SampleApp{}
+	conalg := caesar.InitConalgModule(&app)
+	app.SetConalgModule(conalg)
 
-	caesarModule := caesar.NewCaesar(cfg, transport)
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
 
-	transport.SetReceiver(caesarModule)
+	router.POST("/propose", func(c *gin.Context) {
+		var json struct {
+			Command string `json:"command"`
+		}
+		if err := c.ShouldBindJSON(&json); err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
 
-	go func() {
-		time.Sleep(1 * time.Second)
-		transport.ConnectToNodes()
-	}()
+		app.conalg.Propose([]byte(json.Command))
+		c.JSON(200, gin.H{"status": "ok"})
+	})
 
-	err = transport.RunServer()
-	if err != nil {
-		slog.Fatal(err)
-	}
+	port := os.Getenv("SAMPLEAPP_PORT")
+	router.Run(port)
 }
