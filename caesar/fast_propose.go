@@ -69,6 +69,7 @@ func (c *Caesar) FastPropose(req models.Request) {
 
 }
 
+// TODO remove whitelist from actual request?
 func (c *Caesar) ReceiveFastPropose(req models.Request) {
 	go func(req models.Request) {
 		slog.Debugf("Received Fast Propose %s", req)
@@ -82,8 +83,11 @@ func (c *Caesar) ReceiveFastPropose(req models.Request) {
 		}
 
 		req.Status = models.FAST_PEND
+		req.Forced = !req.Whitelist.IsEmpty()
 		req.Pred = c.computePred(req.ID, req.Payload, req.Timestamp, req.Whitelist)
 		slog.Debug(req.Pred)
+
+		c.History.Set(req.ID, req)
 
 	}(req)
 }
@@ -92,10 +96,7 @@ func (c *Caesar) ReceiveFastProposeResponse(r models.Response) {
 	req, ok := c.History.Get(r.RequestID)
 	if !ok {
 		slog.Warnf("Received response for unknown request %s", r.RequestID)
-		// slog.Debug(c.History.Items())
 		return
 	}
-
 	req.ResponseChan <- r
-	// slog.Debug("Sent response...")
 }

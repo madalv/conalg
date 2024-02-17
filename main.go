@@ -10,10 +10,6 @@ import (
 
 // TODO add start/end times for requests to track
 
-/*
-Qs:
-- what happens if stable msg not received by all nodes?
-*/
 
 // TODO move this bs somewhere else
 type SampleApp struct {

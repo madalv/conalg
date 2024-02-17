@@ -24,6 +24,8 @@ type Caesar struct {
 	Cfg       config.Config
 	Transport Transport
 	Executer  Application
+	// used in the wait function, to notify about the status of a request
+	StatusUpdateChan chan models.Request
 }
 
 func NewCaesar(Cfg config.Config, transport Transport, app Application) *Caesar {
@@ -36,6 +38,7 @@ func NewCaesar(Cfg config.Config, transport Transport, app Application) *Caesar 
 		Cfg:       Cfg,
 		Transport: transport,
 		Executer:  app,
+		StatusUpdateChan: make(chan models.Request),
 	}
 }
 
@@ -85,3 +88,5 @@ func repliesHaveNack(replies map[string]models.Response) bool {
 	}
 	return false
 }
+
+func wait
