@@ -9,12 +9,13 @@ import (
 )
 
 const (
-	FAST_PEND = "FAST_PENDING"
-	SLOW_PEND = "SLOW_PENDING"
-	ACC       = "ACCEPTED"
-	REJ       = "REJECTED"
-	STABLE    = "STABLE"
-	WAITING   = "WAITING"
+	FAST_PEND     = "FAST_PENDING"
+	PRE_FAST_PEND = "PRE_FAST_PENDING"
+	SLOW_PEND     = "SLOW_PENDING"
+	ACC           = "ACCEPTED"
+	REJ           = "REJECTED"
+	STABLE        = "STABLE"
+	WAITING       = "WAITING"
 )
 
 type Request struct {
@@ -29,6 +30,7 @@ type Request struct {
 	ProposeTime  time.Time
 	StableTime   time.Time
 	ResponseChan chan Response
+	Whitelist    gs.Set[string]
 }
 
 func NewRequest(payload []byte, ts uint64, fq int, proposer string) Request {
@@ -43,6 +45,17 @@ func NewRequest(payload []byte, ts uint64, fq int, proposer string) Request {
 		ResponseChan: make(chan Response, fq),
 		ProposeTime:  time.Now(),
 		Proposer:     proposer,
+		Whitelist:    nil,
+	}
+}
+
+func FromFastProposePb(fp *pb.FastPropose) Request {
+	return Request{
+		ID:        fp.RequestId,
+		Payload:   fp.Payload,
+		Timestamp: fp.Time,
+		Whitelist: gs.NewSet(fp.Whitelist...),
+		Ballot:    uint(fp.Ballot),
 	}
 }
 
@@ -51,7 +64,7 @@ func (r *Request) ToFastProposePb() *pb.FastPropose {
 		RequestId: r.ID,
 		Payload:   r.Payload,
 		Time:      r.Timestamp,
-		Whitelist: nil,
+		Whitelist: r.Whitelist.ToSlice(),
 		Ballot:    uint64(r.Ballot),
 	}
 }

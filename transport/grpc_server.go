@@ -33,8 +33,6 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 			return err
 		}
 
-		slog.Infof("Received Fast Propose: %v", msg)
-
 		err = stream.Send(&pb.FastProposeResponse{
 			ResquestId: msg.RequestId,
 			Ballot:     msg.Ballot,

@@ -2,7 +2,6 @@ package main
 
 import (
 	"conalg/caesar"
-	"math/rand"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +13,6 @@ import (
 /*
 Qs:
 - what happens if stable msg not received by all nodes?
-- how much should the timeout for fast propose be? what exactly happens if it times out?
 */
 
 // TODO move this bs somewhere else
@@ -23,11 +21,10 @@ type SampleApp struct {
 }
 
 func (s *SampleApp) DetermineConflict(c1, c2 []byte) bool {
-	if rand.Intn(100) < 50 {
+	if len(c1) == len(c2) {
 		return true
-	} else {
-		return false
 	}
+	return false
 }
 
 func (s *SampleApp) Execute(c []byte) {
