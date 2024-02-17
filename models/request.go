@@ -2,6 +2,7 @@ package models
 
 import (
 	"conalg/pb"
+	"fmt"
 	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
@@ -33,7 +34,7 @@ type Request struct {
 	Whitelist    gs.Set[string]
 }
 
-func NewRequest(payload []byte, ts uint64, fq int, proposer string) Request {
+func NewRequest(payload []byte, ts uint64, fq int, proposer uint64) Request {
 	return Request{
 		ID:           uuid.NewString(),
 		Payload:      payload,
@@ -44,7 +45,7 @@ func NewRequest(payload []byte, ts uint64, fq int, proposer string) Request {
 		Forced:       false,
 		ResponseChan: make(chan Response, fq),
 		ProposeTime:  time.Now(),
-		Proposer:     proposer,
+		Proposer:     fmt.Sprintf("NODE_%d", proposer),
 		Whitelist:    nil,
 	}
 }

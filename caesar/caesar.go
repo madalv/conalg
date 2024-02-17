@@ -50,23 +50,25 @@ func (c *Caesar) Propose(payload []byte) {
 // computePred computes the predecessor set for a request
 // TODO reformat this, jesus christ
 func (c *Caesar) computePred(reqID string, payload []byte, timestamp uint64, whitelist gs.Set[string]) (pred gs.Set[string]) {
-
+	slog.Debug("Computing PRED: ", reqID, payload, timestamp, whitelist)
+	pred = gs.NewSet[string]()
 	iterator := c.History.IterBuffered()
+	if whitelist == nil {
+		whitelist = gs.NewSet[string]()
+	}
 
 	for kv := range iterator {
 		_, req := kv.Key, kv.Val
-		slog.Debug("Computing PRED: ", reqID, payload, timestamp, whitelist, req)
-
+		slog.Debug(req.ID, string(req.Payload), req.Timestamp, req.Status)
 		if reqID != req.ID && c.Executer.DetermineConflict(payload, req.Payload) {
 			if whitelist.IsEmpty() && req.Timestamp < timestamp {
 				pred.Add(req.ID)
 			} else if !whitelist.IsEmpty() {
-				if (whitelist.Contains(req.ID)) ||
-					(req.Timestamp < timestamp &&
-						req.Status == models.SLOW_PEND ||
+				if whitelist.Contains(req.ID) ||
+					(req.Timestamp < timestamp && (req.Status == models.SLOW_PEND ||
 						req.Status == models.ACC ||
-						req.Status == models.STABLE) {
-					req.Pred.Add(req.ID)
+						req.Status == models.STABLE)) {
+					pred.Add(req.ID)
 				}
 			}
 		}

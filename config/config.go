@@ -3,7 +3,10 @@ package config
 import (
 	"math"
 	"os"
+	"strconv"
 	"strings"
+
+	"github.com/gookit/slog"
 )
 
 type Config struct {
@@ -11,7 +14,7 @@ type Config struct {
 	ClassicQuorum int
 	Port          string
 	Nodes         []string
-	ID            string
+	ID            uint64
 }
 
 func NewConfig() Config {
@@ -19,7 +22,10 @@ func NewConfig() Config {
 
 	port := os.Getenv("PORT")
 	nodes := os.Getenv("NODES")
-	id := os.Getenv("ID")
+	id, err := strconv.Atoi(os.Getenv("ID"))
+	if err != nil {
+		slog.Fatal(err)
+	}
 	nodesSplit := strings.Split(nodes, ",")
 	nrNodes := float64(len(nodesSplit))
 
@@ -33,7 +39,7 @@ func NewConfig() Config {
 		Port:          port,
 		ClassicQuorum: int(classicQuorum),
 		FastQuorum:    int(fastQuorum),
-		ID:            id,
+		ID:            uint64(id),
 	}
 
 	return cfg

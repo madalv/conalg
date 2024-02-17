@@ -3,6 +3,7 @@ package transport
 import (
 	"conalg/config"
 	"conalg/pb"
+	"fmt"
 	"io"
 
 	"github.com/gookit/slog"
@@ -39,7 +40,7 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 			Time:       msg.Time,
 			Pred:       nil,
 			Result:     true,
-			From:       srv.cfg.ID,
+			From:       fmt.Sprintf("NODE_%d", srv.cfg.ID),
 		})
 
 		if err != nil {

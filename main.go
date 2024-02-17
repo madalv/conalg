@@ -21,10 +21,7 @@ type SampleApp struct {
 }
 
 func (s *SampleApp) DetermineConflict(c1, c2 []byte) bool {
-	if len(c1) == len(c2) {
-		return true
-	}
-	return false
+	return len(c1) == len(c2)
 }
 
 func (s *SampleApp) Execute(c []byte) {
