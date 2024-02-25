@@ -3,6 +3,8 @@ package caesar
 import (
 	"conalg/config"
 	"conalg/models"
+	"conalg/util"
+	"context"
 
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/slog"
@@ -25,7 +27,7 @@ type Caesar struct {
 	Transport Transport
 	Executer  Application
 	// used in the wait function, to notify about the status of a request
-	StatusUpdateChan chan models.Request
+	Publisher util.Publisher[models.StatusUpdate]
 }
 
 func NewCaesar(Cfg config.Config, transport Transport, app Application) *Caesar {
@@ -38,7 +40,9 @@ func NewCaesar(Cfg config.Config, transport Transport, app Application) *Caesar 
 		Cfg:       Cfg,
 		Transport: transport,
 		Executer:  app,
-		StatusUpdateChan: make(chan models.Request),
+		Publisher: util.NewBroadcastServer[models.StatusUpdate](
+			context.Background(),
+			make(<-chan models.StatusUpdate)),
 	}
 }
 
@@ -89,4 +93,23 @@ func repliesHaveNack(replies map[string]models.Response) bool {
 	return false
 }
 
-func wait
+func computeWaitgroup() {
+
+}
+
+func updateRequestStatus() {
+
+}
+
+/*
+wait computes the waitgroup for a request, then it waits
+for all the requests in the waitgroup to be stable.
+If all the requests in the wg are stable, but at least one STILL
+does not contain the request in its predecessor set, then the request is NACKed.
+
+waitgroup = all conflicting requests with a greater timestamp
+and that does NOT contain the request in its predecessor set
+*/
+func wait(id string, payload []byte, timestamp uint64) {
+
+}

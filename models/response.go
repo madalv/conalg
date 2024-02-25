@@ -6,16 +6,18 @@ import (
 	gs "github.com/deckarep/golang-set/v2"
 )
 
+type Type string
+
 const (
-	FASTP_REPLY = "FASTP_REPLY"
-	SLOWP_REPLY = "SLOWP_REPLY"
-	RETRY_REPLY = "RETRY_REPLY"
+	FASTP_REPLY Type = "FASTP_REPLY"
+	SLOWP_REPLY Type = "SLOWP_REPLY"
+	RETRY_REPLY Type = "RETRY_REPLY"
 )
 
 type Response struct {
 	From      string
 	RequestID string
-	Type      string
+	Type      Type
 	Status    bool
 	Pred      gs.Set[string]
 	Timestamp uint64

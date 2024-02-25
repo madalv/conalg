@@ -9,14 +9,16 @@ import (
 	"github.com/google/uuid"
 )
 
+type Status string
+
 const (
-	FAST_PEND     = "FAST_PENDING"
-	PRE_FAST_PEND = "PRE_FAST_PENDING"
-	SLOW_PEND     = "SLOW_PENDING"
-	ACC           = "ACCEPTED"
-	REJ           = "REJECTED"
-	STABLE        = "STABLE"
-	WAITING       = "WAITING"
+	FAST_PEND     Status = "FAST_PENDING"
+	PRE_FAST_PEND Status = "PRE_FAST_PENDING"
+	SLOW_PEND     Status = "SLOW_PENDING"
+	ACC           Status = "ACCEPTED"
+	REJ           Status = "REJECTED"
+	STABLE        Status = "STABLE"
+	WAITING       Status = "WAITING"
 )
 
 type Request struct {
@@ -25,7 +27,7 @@ type Request struct {
 	Payload      []byte
 	Timestamp    uint64
 	Pred         gs.Set[string]
-	Status       string
+	Status       Status
 	Ballot       uint
 	Forced       bool
 	ProposeTime  time.Time

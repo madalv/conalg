@@ -1,41 +1,43 @@
 package util
 
-import "context"
+import (
+	"context"
+)
 
-type Publisher interface {
-	Subscribe() <-chan int
-	CancelSubscription(<-chan int)
+type Publisher[T any] interface {
+	Subscribe() <-chan T
+	CancelSubscription(<-chan T)
 }
 
-type broadcastServer struct {
-	source         <-chan int
-	listeners      []chan int
-	addListener    chan chan int
-	removeListener chan (<-chan int)
+type broadcastServer[T any] struct {
+	source         <-chan T
+	listeners      []chan T
+	addListener    chan chan T
+	removeListener chan (<-chan T)
 }
 
-func (s *broadcastServer) Subscribe() <-chan int {
-	newListener := make(chan int)
+func (s *broadcastServer[T]) Subscribe() <-chan T {
+	newListener := make(chan T)
 	s.addListener <- newListener
 	return newListener
 }
 
-func (s *broadcastServer) CancelSubscription(channel <-chan int) {
+func (s *broadcastServer[T]) CancelSubscription(channel <-chan T) {
 	s.removeListener <- channel
 }
 
-func NewBroadcastServer(ctx context.Context, source <-chan int) Publisher {
-	service := &broadcastServer{
+func NewBroadcastServer[T any](ctx context.Context, source <-chan T) Publisher[T] {
+	service := &broadcastServer[T]{
 		source:         source,
-		listeners:      make([]chan int, 0),
-		addListener:    make(chan chan int),
-		removeListener: make(chan (<-chan int)),
+		listeners:      make([]chan T, 0),
+		addListener:    make(chan chan T),
+		removeListener: make(chan (<-chan T)),
 	}
 	go service.serve(ctx)
 	return service
 }
 
-func (s *broadcastServer) serve(ctx context.Context) {
+func (s *broadcastServer[T]) serve(ctx context.Context) {
 	defer func() {
 		for _, listener := range s.listeners {
 			if listener != nil {
