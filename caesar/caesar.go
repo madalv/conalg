@@ -5,6 +5,7 @@ import (
 	"conalg/models"
 	"conalg/util"
 	"context"
+	"errors"
 
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/slog"
@@ -42,7 +43,7 @@ func NewCaesar(Cfg config.Config, transport Transport, app Application) *Caesar 
 		Executer:  app,
 		Publisher: util.NewBroadcastServer[models.StatusUpdate](
 			context.Background(),
-			make(<-chan models.StatusUpdate)),
+			make(chan models.StatusUpdate)),
 	}
 }
 
@@ -55,7 +56,6 @@ func (c *Caesar) Propose(payload []byte) {
 }
 
 // computePred computes the predecessor set for a request
-// TODO reformat this, jesus christ
 func (c *Caesar) computePred(reqID string, payload []byte, timestamp uint64, whitelist gs.Set[string]) (pred gs.Set[string]) {
 	slog.Debug("Computing PRED: ", reqID, payload, timestamp, whitelist)
 	pred = gs.NewSet[string]()
@@ -93,12 +93,25 @@ func repliesHaveNack(replies map[string]models.Response) bool {
 	return false
 }
 
-func computeWaitgroup() {
+func (c *Caesar) computeWaitgroup(reqID string, payload []byte, timestamp uint64) (gs.Set[string], error) {
+	slog.Debugf("Computing waitgroup for request %s", reqID)
+	waitgroup := gs.NewSet[string]()
+	iterator := c.History.IterBuffered()
+	for kv := range iterator {
+		_, req := kv.Key, kv.Val
 
-}
-
-func updateRequestStatus() {
-
+		if reqID != req.ID &&
+			c.Executer.DetermineConflict(payload, req.Payload) &&
+			req.Timestamp > timestamp &&
+			!req.Pred.Contains(reqID) {
+			if req.Status == models.STABLE || req.Status == models.ACC {
+				return nil, errors.New("auto NACK: stable request doesn't contain the request in its predecessor set")
+			} else {
+				waitgroup.Add(req.ID)
+			}
+		}
+	}
+	return waitgroup, nil
 }
 
 /*

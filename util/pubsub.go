@@ -7,10 +7,11 @@ import (
 type Publisher[T any] interface {
 	Subscribe() <-chan T
 	CancelSubscription(<-chan T)
+	Publish(val T)
 }
 
 type broadcastServer[T any] struct {
-	source         <-chan T
+	source         chan T
 	listeners      []chan T
 	addListener    chan chan T
 	removeListener chan (<-chan T)
@@ -26,7 +27,11 @@ func (s *broadcastServer[T]) CancelSubscription(channel <-chan T) {
 	s.removeListener <- channel
 }
 
-func NewBroadcastServer[T any](ctx context.Context, source <-chan T) Publisher[T] {
+func (s *broadcastServer[T]) Publish(val T) {
+	s.source <- val
+}
+
+func NewBroadcastServer[T any](ctx context.Context, source chan T) Publisher[T] {
 	service := &broadcastServer[T]{
 		source:         source,
 		listeners:      make([]chan T, 0),
