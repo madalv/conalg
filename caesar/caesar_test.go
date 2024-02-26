@@ -118,7 +118,7 @@ func TestComputePred_WithWhitelist(t *testing.T) {
 	expectedPred.Add("reqID1")
 	assert.Equal(t, expectedPred, pred)
 }
-func TestComputeWaitgroup_NoError(t *testing.T) {
+func TestComputeWaitlist_NoError(t *testing.T) {
 	app := &SampleApp{}
 	caesar := NewCaesar(config.Config{}, nil, app)
 	app.SetConalgModule(caesar)
@@ -139,7 +139,7 @@ func TestComputeWaitgroup_NoError(t *testing.T) {
 	caesar.History = history
 
 	// Call the computeWaitgroup function
-	waitgroup, err := caesar.computeWaitgroup(reqID, payload, timestamp)
+	waitgroup, err := caesar.computeWaitlist(reqID, payload, timestamp)
 
 	// Assert the expected result
 	expectedWaitgroup := gs.NewSet[string]()
@@ -148,7 +148,7 @@ func TestComputeWaitgroup_NoError(t *testing.T) {
 	assert.Equal(t, expectedWaitgroup, waitgroup)
 }
 
-func TestComputeWaitgroup_ErrorAutoNack(t *testing.T) {
+func TestComputeWaitlist_ErrorAutoNack(t *testing.T) {
 	app := &SampleApp{}
 	caesar := NewCaesar(config.Config{}, nil, app)
 	app.SetConalgModule(caesar)
@@ -169,7 +169,7 @@ func TestComputeWaitgroup_ErrorAutoNack(t *testing.T) {
 	caesar.History = history
 
 	// Call the computeWaitgroup function
-	waitgroup, err := caesar.computeWaitgroup(reqID, payload, timestamp)
+	waitgroup, err := caesar.computeWaitlist(reqID, payload, timestamp)
 
 	// Assert the expected result
 	assert.Error(t, err)

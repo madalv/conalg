@@ -2,8 +2,8 @@ package transport
 
 import (
 	"conalg/config"
+	"conalg/models"
 	"conalg/pb"
-	"fmt"
 	"io"
 
 	"github.com/gookit/slog"
@@ -12,15 +12,20 @@ import (
 
 type grpcServer struct {
 	pb.ConalgServer
-	cfg config.Config
+	cfg      config.Config
+	receiver Receiver
 }
 
-func NewGRPCServer(cfg config.Config) *grpc.Server {
+func NewGRPCServer(cfg config.Config, r Receiver) *grpc.Server {
 	slog.Infof("Initializing gRPC Server")
 	s := grpc.NewServer()
 
-	pb.RegisterConalgServer(s, &grpcServer{cfg: cfg})
+	pb.RegisterConalgServer(s, &grpcServer{cfg: cfg, receiver: r})
 	return s
+}
+
+func (t *grpcServer) SetReceiver(r Receiver) {
+	t.receiver = r
 }
 
 func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServer) error {
@@ -34,17 +39,12 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 			return err
 		}
 
-		err = stream.Send(&pb.FastProposeResponse{
-			ResquestId: msg.RequestId,
-			Ballot:     msg.Ballot,
-			Time:       msg.Time,
-			Pred:       nil,
-			Result:     true,
-			From:       fmt.Sprintf("NODE_%d", srv.cfg.ID),
-		})
-
-		if err != nil {
-			return err
-		}
+		go func(stream pb.Conalg_FastProposeStreamServer, msg *pb.FastPropose) {
+			outcome := srv.receiver.ReceiveFastPropose(models.FromFastProposePb(msg))
+			err = stream.Send(models.ToFastProposeResponse(outcome))
+			if err != nil {
+				slog.Error(err)
+			}
+		}(stream, msg)
 	}
 }

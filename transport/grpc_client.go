@@ -10,15 +10,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-/*
-Receiver is an interface that defines the methods through
-which the transport module servesthe reponses back to
-the consensus module (aka Caesar module)
-*/
-type Receiver interface {
-	ReceiveFastProposeResponse(models.Response)
-}
-
 type grpcClient struct {
 	pb.ConalgClient
 	fastProposeStream pb.Conalg_FastProposeStreamClient

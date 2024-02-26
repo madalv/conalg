@@ -6,12 +6,20 @@ import (
 	"net"
 
 	"github.com/gookit/slog"
-	"google.golang.org/grpc"
 )
+
+/*
+Receiver is an interface that defines the methods through
+which the transport module servesthe reponses back to
+the consensus module (aka Caesar module)
+*/
+type Receiver interface {
+	ReceiveFastProposeResponse(models.Response)
+	ReceiveFastPropose(models.Request) models.Response
+}
 
 type grpcTransport struct {
 	clients         []*grpcClient
-	server          *grpc.Server
 	fastProposeChan chan *models.Request
 	cfg             config.Config
 	receiver        Receiver
@@ -22,7 +30,6 @@ func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
 
 	module := &grpcTransport{
 		clients:         []*grpcClient{},
-		server:          NewGRPCServer(cfg),
 		fastProposeChan: make(chan *models.Request, 100),
 		cfg:             cfg,
 	}
@@ -46,12 +53,13 @@ func (t *grpcTransport) ListenToChannels() {
 }
 
 func (t *grpcTransport) RunServer() error {
+	server := NewGRPCServer(t.cfg, t.receiver)
 	listener, err := net.Listen("tcp", t.cfg.Port)
 	if err != nil {
 		return err
 	}
 
-	if err := t.server.Serve(listener); err != nil {
+	if err := server.Serve(listener); err != nil {
 		return err
 	}
 	return nil

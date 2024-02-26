@@ -69,27 +69,35 @@ func (c *Caesar) FastPropose(req models.Request) {
 
 }
 
-// TODO remove whitelist from actual request?
-func (c *Caesar) ReceiveFastPropose(req models.Request) {
-	go func(req models.Request) {
-		slog.Debugf("Received Fast Propose %s", req)
-		c.Ballots.Set(req.ID, req.Ballot)
-		c.Clock.SetTimestamp(req.Timestamp)
+func (c *Caesar) ReceiveFastPropose(req models.Request) models.Response {
+	slog.Debugf("Received Fast Propose %s", req)
+	c.Ballots.Set(req.ID, req.Ballot)
+	c.Clock.SetTimestamp(req.Timestamp)
 
-		if !c.History.Has(req.ID) {
-			slog.Debugf("Adding new request %s to history", req.ID)
-			req.Status = models.PRE_FAST_PEND
-			c.History.Set(req.ID, req)
-		}
-
-		req.Status = models.FAST_PEND
-		req.Forced = !req.Whitelist.IsEmpty()
-		req.Pred = c.computePred(req.ID, req.Payload, req.Timestamp, req.Whitelist)
-		slog.Debug(req.Pred)
-
+	if !c.History.Has(req.ID) {
+		slog.Debugf("Adding new request %s to history", req.ID)
+		req.Status = models.PRE_FAST_PEND
 		c.History.Set(req.ID, req)
+	}
 
-	}(req)
+	req.Status = models.FAST_PEND
+	req.Forced = !req.Whitelist.IsEmpty()
+	req.Pred = c.computePred(req.ID, req.Payload, req.Timestamp, req.Whitelist)
+	slog.Debug(req.Pred)
+
+	c.History.Set(req.ID, req)
+
+	outcome := c.wait(req.ID, req.Payload, req.Timestamp)
+	if !outcome {
+		req.Status = models.REJ
+		req.Forced = false
+		c.History.Set(req.ID, req)
+		newTS := c.Clock.NewTimestamp()
+		newPred := c.computePred(req.ID, req.Payload, newTS, nil)
+		return models.NewResponse(req.ID, models.FASTP_REPLY, outcome, newPred, c.Cfg.ID, newTS, req.Ballot)
+	} else {
+		return models.NewResponse(req.ID, models.FASTP_REPLY, outcome, req.Pred, c.Cfg.ID, req.Timestamp, req.Ballot)
+	}
 }
 
 func (c *Caesar) ReceiveFastProposeResponse(r models.Response) {

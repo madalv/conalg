@@ -93,7 +93,7 @@ func repliesHaveNack(replies map[string]models.Response) bool {
 	return false
 }
 
-func (c *Caesar) computeWaitgroup(reqID string, payload []byte, timestamp uint64) (gs.Set[string], error) {
+func (c *Caesar) computeWaitlist(reqID string, payload []byte, timestamp uint64) (gs.Set[string], error) {
 	slog.Debugf("Computing waitgroup for request %s", reqID)
 	waitgroup := gs.NewSet[string]()
 	iterator := c.History.IterBuffered()
@@ -115,7 +115,7 @@ func (c *Caesar) computeWaitgroup(reqID string, payload []byte, timestamp uint64
 }
 
 /*
-wait computes the waitgroup for a request, then it waits
+wait computes the waitlist for a request, then it waits
 for all the requests in the waitgroup to be stable.
 If all the requests in the wg are stable, but at least one STILL
 does not contain the request in its predecessor set, then the request is NACKed.
@@ -123,6 +123,37 @@ does not contain the request in its predecessor set, then the request is NACKed.
 waitgroup = all conflicting requests with a greater timestamp
 and that does NOT contain the request in its predecessor set
 */
-func wait(id string, payload []byte, timestamp uint64) {
+func (c *Caesar) wait(id string, payload []byte, timestamp uint64) bool {
+	slog.Debugf("Request %s is waiting", id)
+	waitlist, err := c.computeWaitlist(id, payload, timestamp)
+	if err != nil {
+		slog.Warnf("Auto NACK: %s", err)
+		return false
+	}
 
+	if waitlist.IsEmpty() {
+		return true
+	}
+
+	slog.Debugf("Request %s is waiting with waitlist %v", id, waitlist)
+
+	ch := c.Publisher.Subscribe()
+	defer c.Publisher.CancelSubscription(ch)
+
+	for update := range ch {
+		if waitlist.Contains(update.RequestID) {
+			if update.Status == models.STABLE || update.Status == models.ACC {
+				if !update.Pred.Contains(id) {
+					return false
+				} else {
+					waitlist.Remove(update.RequestID)
+				}
+			}
+
+			if waitlist.IsEmpty() {
+				return true
+			}
+		}
+	}
+	return false
 }
