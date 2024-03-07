@@ -47,6 +47,7 @@ func (t *grpcTransport) ListenToChannels() {
 	for req := range t.fastProposeChan {
 		slog.Info("Broadcasting Fast Propose")
 		for _, client := range t.clients {
+			// slog.Info("Sending Fast Propose %v", req)
 			client.sendFastPropose(req)
 		}
 	}
@@ -88,7 +89,7 @@ func (t *grpcTransport) ConnectToNodes() error {
 	}
 
 	clients = append(clients, c)
-	slog.Debug(clients)
+	// slog.Debug(clients)
 
 	t.clients = clients
 	return nil

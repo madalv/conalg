@@ -63,6 +63,9 @@ func FromFastProposePb(fp *pb.FastPropose) Request {
 }
 
 func (r *Request) ToFastProposePb() *pb.FastPropose {
+	if r.Whitelist == nil {
+		r.Whitelist = gs.NewSet[string]()
+	}
 	return &pb.FastPropose{
 		RequestId: r.ID,
 		Payload:   r.Payload,

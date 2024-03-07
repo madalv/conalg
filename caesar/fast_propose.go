@@ -83,7 +83,7 @@ func (c *Caesar) ReceiveFastPropose(req models.Request) models.Response {
 	req.Status = models.FAST_PEND
 	req.Forced = !req.Whitelist.IsEmpty()
 	req.Pred = c.computePred(req.ID, req.Payload, req.Timestamp, req.Whitelist)
-	slog.Debug(req.Pred)
+	slog.Debug("computed pred: ", req.Pred)
 
 	c.History.Set(req.ID, req)
 
