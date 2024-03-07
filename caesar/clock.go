@@ -33,7 +33,7 @@ func (c *Clock) SetTimestamp(ts uint64) {
 	c.Mutex.Lock()
 	defer c.Mutex.Unlock()
 
-	if ts <= c.Timestamp {
+	if ts < c.Timestamp {
 		return
 	}
 	c.Timestamp = ts + c.NrNodes

@@ -29,7 +29,6 @@ func (t *grpcServer) SetReceiver(r Receiver) {
 }
 
 func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServer) error {
-
 	for {
 		msg, err := stream.Recv()
 		if err == io.EOF {
@@ -45,6 +44,7 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 			if err != nil {
 				slog.Error(err)
 			}
+			slog.Debug("Sent Fast Propose Response %v", msg.Payload)
 		}(stream, msg)
 	}
 }

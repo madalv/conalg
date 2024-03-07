@@ -48,7 +48,7 @@ func NewRequest(payload []byte, ts uint64, fq int, proposer uint64) Request {
 		ResponseChan: make(chan Response, fq),
 		ProposeTime:  time.Now(),
 		Proposer:     fmt.Sprintf("NODE_%d", proposer),
-		Whitelist:    nil,
+		Whitelist:    gs.NewSet[string](),
 	}
 }
 

@@ -49,9 +49,9 @@ func NewCaesar(Cfg config.Config, transport Transport, app Application) *Caesar 
 
 func (c *Caesar) Propose(payload []byte) {
 	req := models.NewRequest(payload, c.Clock.NewTimestamp(), c.Cfg.FastQuorum, c.Cfg.ID)
-	slog.Debugf("Proposing %s", req)
+	slog.Debugf("Proposing %v", req)
 	c.History.Set(req.ID, req)
-	slog.Debug(c.History.Items())
+	// slog.Debug(c.History.Items())
 	go c.FastPropose(req)
 }
 
@@ -66,7 +66,7 @@ func (c *Caesar) computePred(reqID string, payload []byte, timestamp uint64, whi
 
 	for kv := range iterator {
 		_, req := kv.Key, kv.Val
-		slog.Debug(req.ID, string(req.Payload), req.Timestamp, req.Status)
+		
 		if reqID != req.ID && c.Executer.DetermineConflict(payload, req.Payload) {
 			if whitelist.IsEmpty() && req.Timestamp < timestamp {
 				pred.Add(req.ID)
@@ -94,11 +94,13 @@ func repliesHaveNack(replies map[string]models.Response) bool {
 }
 
 func (c *Caesar) computeWaitlist(reqID string, payload []byte, timestamp uint64) (gs.Set[string], error) {
-	slog.Debugf("Computing waitgroup for request %s", reqID)
+	slog.Debugf("Computing waitgroup for request %s", payload)
 	waitgroup := gs.NewSet[string]()
 	iterator := c.History.IterBuffered()
 	for kv := range iterator {
 		_, req := kv.Key, kv.Val
+
+		slog.Debug(req.ID, string(req.Payload), req.Timestamp, req.Status)
 
 		if reqID != req.ID &&
 			c.Executer.DetermineConflict(payload, req.Payload) &&
@@ -124,18 +126,18 @@ waitgroup = all conflicting requests with a greater timestamp
 and that does NOT contain the request in its predecessor set
 */
 func (c *Caesar) wait(id string, payload []byte, timestamp uint64) bool {
-	slog.Debugf("Request %s is waiting", id)
+	// slog.Debugf("Request %s is waiting", id)
 	waitlist, err := c.computeWaitlist(id, payload, timestamp)
 	if err != nil {
 		slog.Warnf("Auto NACK: %s", err)
 		return false
 	}
 
+	slog.Debugf("Request %s is waiting with waitlist %v", payload, waitlist)
+
 	if waitlist.IsEmpty() {
 		return true
 	}
-
-	slog.Debugf("Request %s is waiting with waitlist %v", id, waitlist)
 
 	ch := c.Publisher.Subscribe()
 	defer c.Publisher.CancelSubscription(ch)

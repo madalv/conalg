@@ -9,7 +9,7 @@ import (
 
 // TODO what the fuck is up with the damn timeout??
 func (c *Caesar) FastPropose(req models.Request) {
-	slog.Debugf("Fast Proposing %s", req)
+	// slog.Debugf("Fast Proposing %s", req)
 
 	replies := map[string]models.Response{}
 	maxTimestamp := req.Timestamp
@@ -69,15 +69,19 @@ func (c *Caesar) FastPropose(req models.Request) {
 
 }
 
-func (c *Caesar) ReceiveFastPropose(req models.Request) models.Response {
-	slog.Debugf("Received Fast Propose %s", req)
-	c.Ballots.Set(req.ID, req.Ballot)
-	c.Clock.SetTimestamp(req.Timestamp)
+func (c *Caesar) ReceiveFastPropose(fp models.Request) models.Response {
+	slog.Debugf("Received Fast Propose %v", fp)
+	c.Ballots.Set(fp.ID, fp.Ballot)
+	c.Clock.SetTimestamp(fp.Timestamp)
+	var req models.Request
 
-	if !c.History.Has(req.ID) {
-		slog.Debugf("Adding new request %s to history", req.ID)
+	if !c.History.Has(fp.ID) {
+		slog.Debugf("Adding new request %s to history", fp.ID)
+		req = fp
 		req.Status = models.PRE_FAST_PEND
 		c.History.Set(req.ID, req)
+	} else {
+		req, _ = c.History.Get(fp.ID)
 	}
 
 	req.Status = models.FAST_PEND
@@ -88,6 +92,7 @@ func (c *Caesar) ReceiveFastPropose(req models.Request) models.Response {
 	c.History.Set(req.ID, req)
 
 	outcome := c.wait(req.ID, req.Payload, req.Timestamp)
+	slog.Debug("computed outcome: ", outcome)
 	if !outcome {
 		req.Status = models.REJ
 		req.Forced = false
@@ -102,6 +107,7 @@ func (c *Caesar) ReceiveFastPropose(req models.Request) models.Response {
 
 func (c *Caesar) ReceiveFastProposeResponse(r models.Response) {
 	req, ok := c.History.Get(r.RequestID)
+	slog.Warn(req)
 	if !ok {
 		slog.Warnf("Received response for unknown request %s", r.RequestID)
 		return

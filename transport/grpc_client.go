@@ -4,6 +4,7 @@ import (
 	"conalg/models"
 	"conalg/pb"
 	"context"
+	"io"
 
 	"github.com/gookit/slog"
 	"google.golang.org/grpc"
@@ -40,7 +41,22 @@ func newGRPCClient(addr string, rec Receiver) (*grpcClient, error) {
 		rec,
 	}
 
-	go c.receiveFastProposeResponse()
+	// go c.receiveFastProposeResponse()
+	go func() {
+		for {
+			msg, err := fpStream.Recv()
+			slog.Info(c.address)
+			if err == io.EOF {
+				slog.Warn("EOF")
+				break
+			}
+			if err != nil {
+				slog.Error(err)
+			}
+			slog.Debugf("Received Fast Propose Response: %v", msg)
+			c.receiver.ReceiveFastProposeResponse(models.FromFastProposeResponse(msg))
+		}
+	}()
 	return c, nil
 }
 
@@ -54,6 +70,11 @@ func (c *grpcClient) sendFastPropose(req *models.Request) {
 func (c *grpcClient) receiveFastProposeResponse() {
 	for {
 		msg, err := c.fastProposeStream.Recv()
+		slog.Info(c.address)
+		if err == io.EOF {
+			slog.Warn("EOF")
+			break
+		}
 		if err != nil {
 			slog.Error(err)
 		}
