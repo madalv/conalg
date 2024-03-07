@@ -4,6 +4,7 @@ import (
 	"conalg/config"
 	"conalg/models"
 	"testing"
+	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/slog"
@@ -174,4 +175,63 @@ func TestComputeWaitlist_ErrorAutoNack(t *testing.T) {
 	// Assert the expected result
 	assert.Error(t, err)
 	assert.Nil(t, waitgroup)
+}
+func TestWait_Succesful(t *testing.T) {
+	app := &SampleApp{}
+	caesar := NewCaesar(config.Config{}, nil, app)
+	app.SetConalgModule(caesar)
+
+	// Define test inputs
+	id := "testReqID"
+	payload := []byte("payload1")
+	timestamp := uint64(32)
+
+	// Create a mock history
+	history := cmap.New[models.Request]()
+	history.Set("reqID1", models.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: models.SLOW_PEND, Pred: gs.NewSet[string]()})
+	history.Set("reqID2", models.Request{ID: "reqID2", Payload: []byte("payload25"), Timestamp: 30, Status: models.ACC, Pred: gs.NewSet[string]()})
+	history.Set("reqID3", models.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: models.STABLE, Pred: gs.NewSet[string]()})
+	history.Set("reqID4", models.Request{ID: "reqID4", Payload: []byte("payload1"), Timestamp: 37, Status: models.FAST_PEND, Pred: gs.NewSet[string]("testReqID")})
+	caesar.History = history
+
+	go func() {
+		time.Sleep(1 * time.Second)
+		caesar.Publisher.Publish(models.StatusUpdate{RequestID: "reqID1", Status: models.STABLE, Pred: gs.NewSet[string]("testReqID")})
+	}()
+
+	// Call the wait function
+	result := caesar.wait(id, payload, timestamp)
+
+	// Assert the expected result
+	assert.True(t, result)
+}
+
+func TestWait_Unsuccessful(t *testing.T) {
+	app := &SampleApp{}
+	caesar := NewCaesar(config.Config{}, nil, app)
+	app.SetConalgModule(caesar)
+
+	// Define test inputs
+	id := "testReqID"
+	payload := []byte("payload1")
+	timestamp := uint64(32)
+
+	// Create a mock history
+	history := cmap.New[models.Request]()
+	history.Set("reqID1", models.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: models.SLOW_PEND, Pred: gs.NewSet[string]()})
+	history.Set("reqID2", models.Request{ID: "reqID2", Payload: []byte("payload25"), Timestamp: 30, Status: models.ACC, Pred: gs.NewSet[string]()})
+	history.Set("reqID3", models.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: models.STABLE, Pred: gs.NewSet[string]()})
+	history.Set("reqID4", models.Request{ID: "reqID4", Payload: []byte("payload1"), Timestamp: 37, Status: models.FAST_PEND, Pred: gs.NewSet[string]("testReqID")})
+	caesar.History = history
+
+	go func() {
+		time.Sleep(1 * time.Second)
+		caesar.Publisher.Publish(models.StatusUpdate{RequestID: "reqID1", Status: models.STABLE, Pred: gs.NewSet[string]("blablalba")})
+	}()
+
+	// Call the wait function
+	result := caesar.wait(id, payload, timestamp)
+
+	// Assert the expected result
+	assert.False(t, result)
 }

@@ -41,22 +41,7 @@ func newGRPCClient(addr string, rec Receiver) (*grpcClient, error) {
 		rec,
 	}
 
-	// go c.receiveFastProposeResponse()
-	go func() {
-		for {
-			msg, err := fpStream.Recv()
-			slog.Info(c.address)
-			if err == io.EOF {
-				slog.Warn("EOF")
-				break
-			}
-			if err != nil {
-				slog.Error(err)
-			}
-			slog.Debugf("Received Fast Propose Response: %v", msg)
-			c.receiver.ReceiveFastProposeResponse(models.FromFastProposeResponse(msg))
-		}
-	}()
+	go c.receiveFastProposeResponse()
 	return c, nil
 }
 

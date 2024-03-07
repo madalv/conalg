@@ -18,7 +18,7 @@ const (
 	ACC           Status = "ACCEPTED"
 	REJ           Status = "REJECTED"
 	STABLE        Status = "STABLE"
-	WAITING       Status = "WAITING"
+	DEFAULT       Status = "DEFAULT"
 )
 
 type Request struct {
@@ -34,6 +34,7 @@ type Request struct {
 	StableTime   time.Time
 	ResponseChan chan Response
 	Whitelist    gs.Set[string]
+
 }
 
 func NewRequest(payload []byte, ts uint64, fq int, proposer uint64) Request {
@@ -42,13 +43,14 @@ func NewRequest(payload []byte, ts uint64, fq int, proposer uint64) Request {
 		Payload:      payload,
 		Timestamp:    ts,
 		Pred:         gs.NewSet[string](),
-		Status:       WAITING,
+		Status:       DEFAULT,
 		Ballot:       0,
 		Forced:       false,
 		ResponseChan: make(chan Response, fq),
 		ProposeTime:  time.Now(),
 		Proposer:     fmt.Sprintf("NODE_%d", proposer),
 		Whitelist:    gs.NewSet[string](),
+		
 	}
 }
 

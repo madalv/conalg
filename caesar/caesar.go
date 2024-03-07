@@ -94,7 +94,7 @@ func repliesHaveNack(replies map[string]models.Response) bool {
 }
 
 func (c *Caesar) computeWaitlist(reqID string, payload []byte, timestamp uint64) (gs.Set[string], error) {
-	slog.Debugf("Computing waitgroup for request %s", payload)
+	slog.Debugf("Computing waitlist for request %s", payload)
 	waitgroup := gs.NewSet[string]()
 	iterator := c.History.IterBuffered()
 	for kv := range iterator {
