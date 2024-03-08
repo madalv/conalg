@@ -14,7 +14,7 @@ which the transport module servesthe reponses back to
 the consensus module (aka Caesar module)
 */
 type Receiver interface {
-	ReceiveFastProposeResponse(models.Response)
+	ReceiveResponse(models.Response)
 	ReceiveFastPropose(models.Request) models.Response
 }
 

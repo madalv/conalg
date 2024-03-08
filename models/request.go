@@ -21,6 +21,13 @@ const (
 	DEFAULT       Status = "DEFAULT"
 )
 
+const (
+	FASTP_PROP  = "FASTP_PROP"
+	SLOWP_PROP  = "SLOWP_PROP"
+	RETRY_PROP  = "RETRY_PROP"
+	STABLE_PROP = "STABLE_PROP"
+)
+
 type Request struct {
 	Proposer     string
 	ID           string
@@ -34,14 +41,13 @@ type Request struct {
 	StableTime   time.Time
 	ResponseChan chan Response
 	Whitelist    gs.Set[string]
-
 }
 
 func NewRequest(payload []byte, ts uint64, fq int, proposer uint64) Request {
 	return Request{
 		ID:           uuid.NewString(),
 		Payload:      payload,
-		Timestamp:    ts,
+		Timestamp:         ts,
 		Pred:         gs.NewSet[string](),
 		Status:       DEFAULT,
 		Ballot:       0,
@@ -50,29 +56,32 @@ func NewRequest(payload []byte, ts uint64, fq int, proposer uint64) Request {
 		ProposeTime:  time.Now(),
 		Proposer:     fmt.Sprintf("NODE_%d", proposer),
 		Whitelist:    gs.NewSet[string](),
-		
 	}
 }
 
-func FromFastProposePb(fp *pb.FastPropose) Request {
+func FromProposePb(fp *pb.Propose) Request {
 	return Request{
 		ID:        fp.RequestId,
 		Payload:   fp.Payload,
-		Timestamp: fp.Time,
+		Timestamp:      fp.Timestamp,
 		Whitelist: gs.NewSet(fp.Whitelist...),
 		Ballot:    uint(fp.Ballot),
+		Pred:      gs.NewSet(fp.Pred...),
 	}
 }
 
-func (r *Request) ToFastProposePb() *pb.FastPropose {
+func (r *Request) ToProposePb(propType string) *pb.Propose {
 	if r.Whitelist == nil {
 		r.Whitelist = gs.NewSet[string]()
 	}
-	return &pb.FastPropose{
+	return &pb.Propose{
 		RequestId: r.ID,
 		Payload:   r.Payload,
-		Time:      r.Timestamp,
+		Timestamp: r.Timestamp,
 		Whitelist: r.Whitelist.ToSlice(),
 		Ballot:    uint64(r.Ballot),
+		Type:      propType,
+		From:      r.Proposer,
+		Pred:      r.Pred.ToSlice(),
 	}
 }

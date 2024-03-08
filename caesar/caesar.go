@@ -51,7 +51,6 @@ func (c *Caesar) Propose(payload []byte) {
 	req := models.NewRequest(payload, c.Clock.NewTimestamp(), c.Cfg.FastQuorum, c.Cfg.ID)
 	slog.Debugf("Proposing %v", req)
 	c.History.Set(req.ID, req)
-	// slog.Debug(c.History.Items())
 	go c.FastPropose(req)
 }
 
@@ -66,7 +65,7 @@ func (c *Caesar) computePred(reqID string, payload []byte, timestamp uint64, whi
 
 	for kv := range iterator {
 		_, req := kv.Key, kv.Val
-		
+
 		if reqID != req.ID && c.Executer.DetermineConflict(payload, req.Payload) {
 			if whitelist.IsEmpty() && req.Timestamp < timestamp {
 				pred.Add(req.ID)
@@ -86,11 +85,20 @@ func (c *Caesar) computePred(reqID string, payload []byte, timestamp uint64, whi
 // repliesHaveNack checks if any of the replies have a nack status
 func repliesHaveNack(replies map[string]models.Response) bool {
 	for _, reply := range replies {
-		if !reply.Status {
+		if !reply.Result {
 			return true
 		}
 	}
 	return false
+}
+
+func (c *Caesar) ReceiveResponse(r models.Response) {
+	req, ok := c.History.Get(r.RequestID)
+	if !ok {
+		slog.Warnf("Received response for unknown request %s", r.RequestID)
+		return
+	}
+	req.ResponseChan <- r
 }
 
 func (c *Caesar) computeWaitlist(reqID string, payload []byte, timestamp uint64) (gs.Set[string], error) {

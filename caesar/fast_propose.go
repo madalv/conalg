@@ -17,7 +17,11 @@ func (c *Caesar) FastPropose(req models.Request) {
 	c.Transport.BroadcastFastPropose(&req)
 
 	for reply := range req.ResponseChan {
-		slog.Debugf("Received %s for req %s", reply, req.ID)
+		slog.Debugf("Received %v for req %s", reply, req.ID)
+
+		if reply.Type != models.FASTP_REPLY {
+			slog.Warn("Received wrong type of reply ", reply.Type, " for req ", req.ID)
+		}
 
 		if _, ok := replies[reply.From]; ok {
 			slog.Warnf("Received duplicate reply %s for req %s", reply, req.ID)
@@ -96,11 +100,4 @@ func (c *Caesar) ReceiveFastPropose(fp models.Request) models.Response {
 	}
 }
 
-func (c *Caesar) ReceiveFastProposeResponse(r models.Response) {
-	req, ok := c.History.Get(r.RequestID)
-	if !ok {
-		slog.Warnf("Received response for unknown request %s", r.RequestID)
-		return
-	}
-	req.ResponseChan <- r
-}
+

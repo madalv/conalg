@@ -38,13 +38,12 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 			return err
 		}
 
-		go func(stream pb.Conalg_FastProposeStreamServer, msg *pb.FastPropose) {
-			outcome := srv.receiver.ReceiveFastPropose(models.FromFastProposePb(msg))
-			err = stream.Send(models.ToFastProposeResponse(outcome))
+		go func(stream pb.Conalg_FastProposeStreamServer, msg *pb.Propose) {
+			outcome := srv.receiver.ReceiveFastPropose(models.FromProposePb(msg))
+			err = stream.Send(models.ToResponsePb(outcome))
 			if err != nil {
 				slog.Error(err)
 			}
-			slog.Debug("Sent Fast Propose Response %v", msg.Payload)
 		}(stream, msg)
 	}
 }

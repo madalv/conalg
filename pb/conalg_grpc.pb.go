@@ -8,6 +8,7 @@ package pb
 
 import (
 	context "context"
+	empty "github.com/golang/protobuf/ptypes/empty"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -23,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ConalgClient interface {
 	FastProposeStream(ctx context.Context, opts ...grpc.CallOption) (Conalg_FastProposeStreamClient, error)
+	StableStream(ctx context.Context, opts ...grpc.CallOption) (Conalg_StableStreamClient, error)
 }
 
 type conalgClient struct {
@@ -43,8 +45,8 @@ func (c *conalgClient) FastProposeStream(ctx context.Context, opts ...grpc.CallO
 }
 
 type Conalg_FastProposeStreamClient interface {
-	Send(*FastPropose) error
-	Recv() (*FastProposeResponse, error)
+	Send(*Propose) error
+	Recv() (*Response, error)
 	grpc.ClientStream
 }
 
@@ -52,12 +54,46 @@ type conalgFastProposeStreamClient struct {
 	grpc.ClientStream
 }
 
-func (x *conalgFastProposeStreamClient) Send(m *FastPropose) error {
+func (x *conalgFastProposeStreamClient) Send(m *Propose) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *conalgFastProposeStreamClient) Recv() (*FastProposeResponse, error) {
-	m := new(FastProposeResponse)
+func (x *conalgFastProposeStreamClient) Recv() (*Response, error) {
+	m := new(Response)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *conalgClient) StableStream(ctx context.Context, opts ...grpc.CallOption) (Conalg_StableStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Conalg_ServiceDesc.Streams[1], "/proto.conalg.Conalg/StableStream", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &conalgStableStreamClient{stream}
+	return x, nil
+}
+
+type Conalg_StableStreamClient interface {
+	Send(*Propose) error
+	CloseAndRecv() (*empty.Empty, error)
+	grpc.ClientStream
+}
+
+type conalgStableStreamClient struct {
+	grpc.ClientStream
+}
+
+func (x *conalgStableStreamClient) Send(m *Propose) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *conalgStableStreamClient) CloseAndRecv() (*empty.Empty, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(empty.Empty)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -69,6 +105,7 @@ func (x *conalgFastProposeStreamClient) Recv() (*FastProposeResponse, error) {
 // for forward compatibility
 type ConalgServer interface {
 	FastProposeStream(Conalg_FastProposeStreamServer) error
+	StableStream(Conalg_StableStreamServer) error
 	mustEmbedUnimplementedConalgServer()
 }
 
@@ -78,6 +115,9 @@ type UnimplementedConalgServer struct {
 
 func (UnimplementedConalgServer) FastProposeStream(Conalg_FastProposeStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method FastProposeStream not implemented")
+}
+func (UnimplementedConalgServer) StableStream(Conalg_StableStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method StableStream not implemented")
 }
 func (UnimplementedConalgServer) mustEmbedUnimplementedConalgServer() {}
 
@@ -97,8 +137,8 @@ func _Conalg_FastProposeStream_Handler(srv interface{}, stream grpc.ServerStream
 }
 
 type Conalg_FastProposeStreamServer interface {
-	Send(*FastProposeResponse) error
-	Recv() (*FastPropose, error)
+	Send(*Response) error
+	Recv() (*Propose, error)
 	grpc.ServerStream
 }
 
@@ -106,12 +146,38 @@ type conalgFastProposeStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *conalgFastProposeStreamServer) Send(m *FastProposeResponse) error {
+func (x *conalgFastProposeStreamServer) Send(m *Response) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *conalgFastProposeStreamServer) Recv() (*FastPropose, error) {
-	m := new(FastPropose)
+func (x *conalgFastProposeStreamServer) Recv() (*Propose, error) {
+	m := new(Propose)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func _Conalg_StableStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(ConalgServer).StableStream(&conalgStableStreamServer{stream})
+}
+
+type Conalg_StableStreamServer interface {
+	SendAndClose(*empty.Empty) error
+	Recv() (*Propose, error)
+	grpc.ServerStream
+}
+
+type conalgStableStreamServer struct {
+	grpc.ServerStream
+}
+
+func (x *conalgStableStreamServer) SendAndClose(m *empty.Empty) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *conalgStableStreamServer) Recv() (*Propose, error) {
+	m := new(Propose)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -130,6 +196,11 @@ var Conalg_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "FastProposeStream",
 			Handler:       _Conalg_FastProposeStream_Handler,
 			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "StableStream",
+			Handler:       _Conalg_StableStream_Handler,
 			ClientStreams: true,
 		},
 	},

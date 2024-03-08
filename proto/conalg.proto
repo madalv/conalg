@@ -1,29 +1,32 @@
 syntax="proto3";
 
+import "google/protobuf/empty.proto";
 package proto.conalg;
-
 option go_package="./pb";
 
-message FastPropose {
-  string request_id = 1;
-  bytes payload = 2;
-  uint64 ballot = 3;
-  uint64 time = 4;
-  repeated string whitelist = 5;
-  string from = 6;
+message Propose {
+  bytes payload = 1;
+  uint64 ballot = 2;
+  uint64 timestamp = 3;
+  repeated string pred = 4;
+  string from = 5;
+  string request_id = 6;
+  repeated string whitelist = 7;
+  string type = 8;
 }
 
-message FastProposeResponse {
+message Response {
   string resquest_id = 1;
   uint64 ballot = 2;
-  uint64 time = 3;
+  uint64 timestamp = 3;
   repeated string pred = 4;
   bool result = 5;
-  bytes payload = 6;
-  string from = 7;
+  string from = 6;
+  string type = 7;
 }
 
 
 service Conalg {
-  rpc FastProposeStream(stream FastPropose) returns (stream FastProposeResponse);
+  rpc FastProposeStream(stream Propose) returns (stream Response);
+  rpc StableStream(stream Propose) returns (google.protobuf.Empty);
 }
