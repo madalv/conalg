@@ -2,7 +2,7 @@ package transport
 
 import (
 	"conalg/config"
-	"conalg/models"
+	"conalg/model"
 	"net"
 
 	"github.com/gookit/slog"
@@ -10,17 +10,18 @@ import (
 
 /*
 Receiver is an interface that defines the methods through
-which the transport module servesthe reponses back to
+which the transport module serves the reponses back to
 the consensus module (aka Caesar module)
 */
 type Receiver interface {
-	ReceiveResponse(models.Response)
-	ReceiveFastPropose(models.Request) models.Response
+	ReceiveResponse(model.Response)
+	ReceiveFastPropose(model.Request) model.Response
+	ReceiveStablePropose(model.Request) error
 }
 
 type grpcTransport struct {
 	clients         []*grpcClient
-	fastProposeChan chan *models.Request
+	fastProposeChan chan *model.Request
 	cfg             config.Config
 	receiver        Receiver
 }
@@ -30,7 +31,7 @@ func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
 
 	module := &grpcTransport{
 		clients:         []*grpcClient{},
-		fastProposeChan: make(chan *models.Request, 100),
+		fastProposeChan: make(chan *model.Request, 100),
 		cfg:             cfg,
 	}
 
@@ -66,7 +67,7 @@ func (t *grpcTransport) RunServer() error {
 	return nil
 }
 
-func (t *grpcTransport) BroadcastFastPropose(req *models.Request) {
+func (t *grpcTransport) BroadcastFastPropose(req *model.Request) {
 	t.fastProposeChan <- req
 }
 

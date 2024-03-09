@@ -2,7 +2,7 @@ package caesar
 
 import (
 	"conalg/config"
-	"conalg/models"
+	"conalg/model"
 	"conalg/util"
 	"context"
 	"errors"
@@ -13,14 +13,14 @@ import (
 )
 
 type Transport interface {
-	BroadcastFastPropose(req *models.Request)
+	BroadcastFastPropose(req *model.Request)
 	RunServer() error
 	ConnectToNodes() error
 }
 
 type Caesar struct {
 	// map of commands and their status
-	History cmap.ConcurrentMap[string, models.Request]
+	History cmap.ConcurrentMap[string, model.Request]
 	// array mapping command c to its ballot nr
 	Ballots   cmap.ConcurrentMap[string, uint]
 	Clock     *Clock
@@ -28,27 +28,28 @@ type Caesar struct {
 	Transport Transport
 	Executer  Application
 	// used in the wait function, to notify about the status of a request
-	Publisher util.Publisher[models.StatusUpdate]
+	Publisher util.Publisher[model.StatusUpdate]
+	Decided   gs.Set[string]
 }
 
 func NewCaesar(Cfg config.Config, transport Transport, app Application) *Caesar {
 	slog.Info("Initializing Caesar Module")
 
 	return &Caesar{
-		History:   cmap.New[models.Request](),
+		History:   cmap.New[model.Request](),
 		Ballots:   cmap.New[uint](),
 		Clock:     NewClock(uint64(len(Cfg.Nodes))),
 		Cfg:       Cfg,
 		Transport: transport,
 		Executer:  app,
-		Publisher: util.NewBroadcastServer[models.StatusUpdate](
+		Publisher: util.NewBroadcastServer[model.StatusUpdate](
 			context.Background(),
-			make(chan models.StatusUpdate)),
+			make(chan model.StatusUpdate)),
 	}
 }
 
 func (c *Caesar) Propose(payload []byte) {
-	req := models.NewRequest(payload, c.Clock.NewTimestamp(), c.Cfg.FastQuorum, c.Cfg.ID)
+	req := model.NewRequest(payload, c.Clock.NewTimestamp(), c.Cfg.FastQuorum, c.Cfg.ID)
 	slog.Debugf("Proposing %v", req)
 	c.History.Set(req.ID, req)
 	go c.FastPropose(req)
@@ -71,9 +72,9 @@ func (c *Caesar) computePred(reqID string, payload []byte, timestamp uint64, whi
 				pred.Add(req.ID)
 			} else if !whitelist.IsEmpty() {
 				if whitelist.Contains(req.ID) ||
-					(req.Timestamp < timestamp && (req.Status == models.SLOW_PEND ||
-						req.Status == models.ACC ||
-						req.Status == models.STABLE)) {
+					(req.Timestamp < timestamp && (req.Status == model.SLOW_PEND ||
+						req.Status == model.ACC ||
+						req.Status == model.STABLE)) {
 					pred.Add(req.ID)
 				}
 			}
@@ -83,7 +84,7 @@ func (c *Caesar) computePred(reqID string, payload []byte, timestamp uint64, whi
 }
 
 // repliesHaveNack checks if any of the replies have a nack status
-func repliesHaveNack(replies map[string]models.Response) bool {
+func repliesHaveNack(replies map[string]model.Response) bool {
 	for _, reply := range replies {
 		if !reply.Result {
 			return true
@@ -92,7 +93,7 @@ func repliesHaveNack(replies map[string]models.Response) bool {
 	return false
 }
 
-func (c *Caesar) ReceiveResponse(r models.Response) {
+func (c *Caesar) ReceiveResponse(r model.Response) {
 	req, ok := c.History.Get(r.RequestID)
 	if !ok {
 		slog.Warnf("Received response for unknown request %s", r.RequestID)
@@ -114,7 +115,7 @@ func (c *Caesar) computeWaitlist(reqID string, payload []byte, timestamp uint64)
 			c.Executer.DetermineConflict(payload, req.Payload) &&
 			req.Timestamp > timestamp &&
 			!req.Pred.Contains(reqID) {
-			if req.Status == models.STABLE || req.Status == models.ACC {
+			if req.Status == model.STABLE || req.Status == model.ACC {
 				return nil, errors.New("auto NACK: stable request doesn't contain the request in its predecessor set")
 			} else {
 				waitgroup.Add(req.ID)
@@ -152,7 +153,7 @@ func (c *Caesar) wait(id string, payload []byte, timestamp uint64) bool {
 
 	for update := range ch {
 		if waitlist.Contains(update.RequestID) {
-			if update.Status == models.STABLE || update.Status == models.ACC {
+			if update.Status == model.STABLE || update.Status == model.ACC {
 				if !update.Pred.Contains(id) {
 					return false
 				} else {

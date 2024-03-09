@@ -1,4 +1,4 @@
-package models
+package model
 
 import gs "github.com/deckarep/golang-set/v2"
 

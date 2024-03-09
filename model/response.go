@@ -1,4 +1,4 @@
-package models
+package model
 
 import (
 	"conalg/pb"
@@ -36,7 +36,7 @@ func NewResponse(reqID string, t string, status bool, pred gs.Set[string], from,
 }
 
 func FromResponsePb(pb *pb.Response) Response {
-	pred := gs.NewSet[string](pb.Pred...)
+	pred := gs.NewThreadUnsafeSet[string](pb.Pred...)
 	return Response{
 		From:      pb.From,
 		RequestID: pb.ResquestId,

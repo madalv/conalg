@@ -1,7 +1,7 @@
 package transport
 
 import (
-	"conalg/models"
+	"conalg/model"
 	"conalg/pb"
 	"context"
 	"io"
@@ -45,8 +45,8 @@ func newGRPCClient(addr string, rec Receiver) (*grpcClient, error) {
 	return c, nil
 }
 
-func (c *grpcClient) sendFastPropose(req *models.Request) {
-	err := c.fastProposeStream.Send(req.ToProposePb(models.FASTP_PROP))
+func (c *grpcClient) sendFastPropose(req *model.Request) {
+	err := c.fastProposeStream.Send(req.ToProposePb(model.FASTP_PROP))
 	if err != nil {
 		slog.Error(err)
 	}
@@ -64,6 +64,6 @@ func (c *grpcClient) receiveFastProposeResponse() {
 			slog.Error(err)
 		}
 		slog.Debugf("Received Fast Propose Response: %v", msg)
-		c.receiver.ReceiveResponse(models.FromResponsePb(msg))
+		c.receiver.ReceiveResponse(model.FromResponsePb(msg))
 	}
 }

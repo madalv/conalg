@@ -2,7 +2,7 @@ package caesar
 
 import (
 	"conalg/config"
-	"conalg/models"
+	"conalg/model"
 	"testing"
 	"time"
 
@@ -41,10 +41,10 @@ func TestComputePred_EmptyWhitelist(t *testing.T) {
 	whitelist := gs.NewSet[string]()
 
 	// Create a mock history with some requests
-	history := cmap.New[models.Request]()
-	history.Set("reqID1", models.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: models.SLOW_PEND})
-	history.Set("reqID2", models.Request{ID: "reqID2", Payload: []byte("payload2"), Timestamp: 30, Status: models.ACC})
-	history.Set("reqID3", models.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: models.STABLE})
+	history := cmap.New[model.Request]()
+	history.Set("reqID1", model.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: model.SLOW_PEND})
+	history.Set("reqID2", model.Request{ID: "reqID2", Payload: []byte("payload2"), Timestamp: 30, Status: model.ACC})
+	history.Set("reqID3", model.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: model.STABLE})
 
 	// Set the mock history in the Caesar instance
 	caesar.History = history
@@ -69,10 +69,10 @@ func TestComputePred_NilWhitelist(t *testing.T) {
 	timestamp := uint64(32)
 
 	// Create a mock history with some requests
-	history := cmap.New[models.Request]()
-	history.Set("reqID1", models.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: models.SLOW_PEND})
-	history.Set("reqID2", models.Request{ID: "reqID2", Payload: []byte("payload2"), Timestamp: 30, Status: models.ACC})
-	history.Set("reqID3", models.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: models.STABLE})
+	history := cmap.New[model.Request]()
+	history.Set("reqID1", model.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: model.SLOW_PEND})
+	history.Set("reqID2", model.Request{ID: "reqID2", Payload: []byte("payload2"), Timestamp: 30, Status: model.ACC})
+	history.Set("reqID3", model.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: model.STABLE})
 
 	// Set the mock history in the Caesar instance
 	caesar.History = history
@@ -99,12 +99,12 @@ func TestComputePred_WithWhitelist(t *testing.T) {
 	whitelist.Add("reqID1")
 
 	// Create a mock history with some requests
-	history := cmap.New[models.Request]()
-	history.Set("reqID1", models.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: models.SLOW_PEND})
-	history.Set("reqID2", models.Request{ID: "reqID2", Payload: []byte("payload2"), Timestamp: 30, Status: models.ACC})
-	history.Set("reqID2.5", models.Request{ID: "reqID2.5", Payload: []byte("payload2"), Timestamp: 31, Status: models.SLOW_PEND})
-	history.Set("reqID3", models.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: models.STABLE})
-	history.Set("reqID4", models.Request{ID: "reqID4", Payload: []byte("payload6"), Timestamp: 22, Status: models.PRE_FAST_PEND})
+	history := cmap.New[model.Request]()
+	history.Set("reqID1", model.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: model.SLOW_PEND})
+	history.Set("reqID2", model.Request{ID: "reqID2", Payload: []byte("payload2"), Timestamp: 30, Status: model.ACC})
+	history.Set("reqID2.5", model.Request{ID: "reqID2.5", Payload: []byte("payload2"), Timestamp: 31, Status: model.SLOW_PEND})
+	history.Set("reqID3", model.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: model.STABLE})
+	history.Set("reqID4", model.Request{ID: "reqID4", Payload: []byte("payload6"), Timestamp: 22, Status: model.PRE_FAST_PEND})
 
 	// Set the mock history in the Caesar instance
 	caesar.History = history
@@ -130,11 +130,11 @@ func TestComputeWaitlist_NoError(t *testing.T) {
 	timestamp := uint64(32)
 
 	// Create a mock history with some requests
-	history := cmap.New[models.Request]()
-	history.Set("reqID1", models.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: models.SLOW_PEND, Pred: gs.NewSet[string]()})
-	history.Set("reqID2", models.Request{ID: "reqID2", Payload: []byte("payload25"), Timestamp: 30, Status: models.ACC, Pred: gs.NewSet[string]()})
-	history.Set("reqID3", models.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: models.STABLE, Pred: gs.NewSet[string]()})
-	history.Set("reqID4", models.Request{ID: "reqID4", Payload: []byte("payload1"), Timestamp: 37, Status: models.FAST_PEND, Pred: gs.NewSet[string]("testReqID")})
+	history := cmap.New[model.Request]()
+	history.Set("reqID1", model.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: model.SLOW_PEND, Pred: gs.NewSet[string]()})
+	history.Set("reqID2", model.Request{ID: "reqID2", Payload: []byte("payload25"), Timestamp: 30, Status: model.ACC, Pred: gs.NewSet[string]()})
+	history.Set("reqID3", model.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: model.STABLE, Pred: gs.NewSet[string]()})
+	history.Set("reqID4", model.Request{ID: "reqID4", Payload: []byte("payload1"), Timestamp: 37, Status: model.FAST_PEND, Pred: gs.NewSet[string]("testReqID")})
 
 	// Set the mock history in the Caesar instance
 	caesar.History = history
@@ -160,11 +160,11 @@ func TestComputeWaitlist_ErrorAutoNack(t *testing.T) {
 	timestamp := uint64(32)
 
 	// Create a mock history with some requests
-	history := cmap.New[models.Request]()
-	history.Set("reqID1", models.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: models.SLOW_PEND, Pred: gs.NewSet[string]()})
-	history.Set("reqID2", models.Request{ID: "reqID2", Payload: []byte("payload25"), Timestamp: 30, Status: models.ACC, Pred: gs.NewSet[string]()})
-	history.Set("reqID3", models.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: models.STABLE, Pred: gs.NewSet[string]()})
-	history.Set("reqID4", models.Request{ID: "reqID4", Payload: []byte("payload1"), Timestamp: 37, Status: models.STABLE, Pred: gs.NewSet[string]()})
+	history := cmap.New[model.Request]()
+	history.Set("reqID1", model.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: model.SLOW_PEND, Pred: gs.NewSet[string]()})
+	history.Set("reqID2", model.Request{ID: "reqID2", Payload: []byte("payload25"), Timestamp: 30, Status: model.ACC, Pred: gs.NewSet[string]()})
+	history.Set("reqID3", model.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: model.STABLE, Pred: gs.NewSet[string]()})
+	history.Set("reqID4", model.Request{ID: "reqID4", Payload: []byte("payload1"), Timestamp: 37, Status: model.STABLE, Pred: gs.NewSet[string]()})
 
 	// Set the mock history in the Caesar instance
 	caesar.History = history
@@ -187,16 +187,16 @@ func TestWait_Succesful(t *testing.T) {
 	timestamp := uint64(32)
 
 	// Create a mock history
-	history := cmap.New[models.Request]()
-	history.Set("reqID1", models.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: models.SLOW_PEND, Pred: gs.NewSet[string]()})
-	history.Set("reqID2", models.Request{ID: "reqID2", Payload: []byte("payload25"), Timestamp: 30, Status: models.ACC, Pred: gs.NewSet[string]()})
-	history.Set("reqID3", models.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: models.STABLE, Pred: gs.NewSet[string]()})
-	history.Set("reqID4", models.Request{ID: "reqID4", Payload: []byte("payload1"), Timestamp: 37, Status: models.FAST_PEND, Pred: gs.NewSet[string]("testReqID")})
+	history := cmap.New[model.Request]()
+	history.Set("reqID1", model.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: model.SLOW_PEND, Pred: gs.NewSet[string]()})
+	history.Set("reqID2", model.Request{ID: "reqID2", Payload: []byte("payload25"), Timestamp: 30, Status: model.ACC, Pred: gs.NewSet[string]()})
+	history.Set("reqID3", model.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: model.STABLE, Pred: gs.NewSet[string]()})
+	history.Set("reqID4", model.Request{ID: "reqID4", Payload: []byte("payload1"), Timestamp: 37, Status: model.FAST_PEND, Pred: gs.NewSet[string]("testReqID")})
 	caesar.History = history
 
 	go func() {
 		time.Sleep(1 * time.Second)
-		caesar.Publisher.Publish(models.StatusUpdate{RequestID: "reqID1", Status: models.STABLE, Pred: gs.NewSet[string]("testReqID")})
+		caesar.Publisher.Publish(model.StatusUpdate{RequestID: "reqID1", Status: model.STABLE, Pred: gs.NewSet[string]("testReqID")})
 	}()
 
 	// Call the wait function
@@ -217,16 +217,16 @@ func TestWait_Unsuccessful(t *testing.T) {
 	timestamp := uint64(32)
 
 	// Create a mock history
-	history := cmap.New[models.Request]()
-	history.Set("reqID1", models.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: models.SLOW_PEND, Pred: gs.NewSet[string]()})
-	history.Set("reqID2", models.Request{ID: "reqID2", Payload: []byte("payload25"), Timestamp: 30, Status: models.ACC, Pred: gs.NewSet[string]()})
-	history.Set("reqID3", models.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: models.STABLE, Pred: gs.NewSet[string]()})
-	history.Set("reqID4", models.Request{ID: "reqID4", Payload: []byte("payload1"), Timestamp: 37, Status: models.FAST_PEND, Pred: gs.NewSet[string]("testReqID")})
+	history := cmap.New[model.Request]()
+	history.Set("reqID1", model.Request{ID: "reqID1", Payload: []byte("payload1"), Timestamp: 34, Status: model.SLOW_PEND, Pred: gs.NewSet[string]()})
+	history.Set("reqID2", model.Request{ID: "reqID2", Payload: []byte("payload25"), Timestamp: 30, Status: model.ACC, Pred: gs.NewSet[string]()})
+	history.Set("reqID3", model.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: model.STABLE, Pred: gs.NewSet[string]()})
+	history.Set("reqID4", model.Request{ID: "reqID4", Payload: []byte("payload1"), Timestamp: 37, Status: model.FAST_PEND, Pred: gs.NewSet[string]("testReqID")})
 	caesar.History = history
 
 	go func() {
 		time.Sleep(1 * time.Second)
-		caesar.Publisher.Publish(models.StatusUpdate{RequestID: "reqID1", Status: models.STABLE, Pred: gs.NewSet[string]("blablalba")})
+		caesar.Publisher.Publish(model.StatusUpdate{RequestID: "reqID1", Status: model.STABLE, Pred: gs.NewSet[string]("blablalba")})
 	}()
 
 	// Call the wait function

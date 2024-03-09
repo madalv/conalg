@@ -1,16 +1,16 @@
 package caesar
 
 import (
-	"conalg/models"
+	"conalg/model"
 
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/slog"
 )
 
-func (c *Caesar) FastPropose(req models.Request) {
+func (c *Caesar) FastPropose(req model.Request) {
 	// slog.Debugf("Fast Proposing %s", req)
 
-	replies := map[string]models.Response{}
+	replies := map[string]model.Response{}
 	maxTimestamp := req.Timestamp
 	pred := gs.NewSet[string]()
 
@@ -19,7 +19,7 @@ func (c *Caesar) FastPropose(req models.Request) {
 	for reply := range req.ResponseChan {
 		slog.Debugf("Received %v for req %s", reply, req.ID)
 
-		if reply.Type != models.FASTP_REPLY {
+		if reply.Type != model.FASTP_REPLY {
 			slog.Warn("Received wrong type of reply ", reply.Type, " for req ", req.ID)
 		}
 
@@ -64,22 +64,22 @@ func (c *Caesar) FastPropose(req models.Request) {
 	}
 }
 
-func (c *Caesar) ReceiveFastPropose(fp models.Request) models.Response {
+func (c *Caesar) ReceiveFastPropose(fp model.Request) model.Response {
 	slog.Debugf("Received Fast Propose %v", fp)
 	c.Ballots.Set(fp.ID, fp.Ballot)
 	c.Clock.SetTimestamp(fp.Timestamp)
-	var req models.Request
+	var req model.Request
 
 	if !c.History.Has(fp.ID) {
 		slog.Debugf("Adding new request %s to history", fp.ID)
 		req = fp
-		req.Status = models.PRE_FAST_PEND
+		req.Status = model.PRE_FAST_PEND
 		c.History.Set(req.ID, req)
 	} else {
 		req, _ = c.History.Get(fp.ID)
 	}
 
-	req.Status = models.FAST_PEND
+	req.Status = model.FAST_PEND
 	req.Forced = !req.Whitelist.IsEmpty()
 	req.Pred = c.computePred(req.ID, req.Payload, req.Timestamp, req.Whitelist)
 	slog.Debug("computed pred: ", req.Pred)
@@ -89,14 +89,14 @@ func (c *Caesar) ReceiveFastPropose(fp models.Request) models.Response {
 	outcome := c.wait(req.ID, req.Payload, req.Timestamp)
 	slog.Debug("computed outcome: ", outcome)
 	if !outcome {
-		req.Status = models.REJ
+		req.Status = model.REJ
 		req.Forced = false
 		c.History.Set(req.ID, req)
 		newTS := c.Clock.NewTimestamp()
 		newPred := c.computePred(req.ID, req.Payload, newTS, nil)
-		return models.NewResponse(req.ID, models.FASTP_REPLY, outcome, newPred, c.Cfg.ID, newTS, req.Ballot)
+		return model.NewResponse(req.ID, model.FASTP_REPLY, outcome, newPred, c.Cfg.ID, newTS, req.Ballot)
 	} else {
-		return models.NewResponse(req.ID, models.FASTP_REPLY, outcome, req.Pred, c.Cfg.ID, req.Timestamp, req.Ballot)
+		return model.NewResponse(req.ID, model.FASTP_REPLY, outcome, req.Pred, c.Cfg.ID, req.Timestamp, req.Ballot)
 	}
 }
 

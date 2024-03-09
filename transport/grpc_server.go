@@ -2,7 +2,7 @@ package transport
 
 import (
 	"conalg/config"
-	"conalg/models"
+	"conalg/model"
 	"conalg/pb"
 	"io"
 
@@ -17,7 +17,7 @@ type grpcServer struct {
 }
 
 func NewGRPCServer(cfg config.Config, r Receiver) *grpc.Server {
-	slog.Infof("Initializing gRPC Server")
+	slog.Infof("Initializing gRPC Server .  .  .")
 	s := grpc.NewServer()
 
 	pb.RegisterConalgServer(s, &grpcServer{cfg: cfg, receiver: r})
@@ -39,11 +39,32 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 		}
 
 		go func(stream pb.Conalg_FastProposeStreamServer, msg *pb.Propose) {
-			outcome := srv.receiver.ReceiveFastPropose(models.FromProposePb(msg))
-			err = stream.Send(models.ToResponsePb(outcome))
+			outcome := srv.receiver.ReceiveFastPropose(model.FromProposePb(msg))
+			err = stream.Send(model.ToResponsePb(outcome))
 			if err != nil {
 				slog.Error(err)
 			}
 		}(stream, msg)
 	}
+}
+
+func (srv *grpcServer) StableStream(stream pb.Conalg_StableStreamServer) error {
+	return nil
+	// for {
+	// 	msg, err := stream.Recv()
+	// 	if err == io.EOF {
+	// 		return nil
+	// 	}
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	// go func(stream pb.Conalg_StableStreamServer, msg *pb.Stable) {
+	// 	// 	outcome := srv.receiver.ReceiveStable(model.FromStablePb(msg))
+	// 	// 	err = stream.Send(model.ToResponsePb(outcome))
+	// 	// 	if err != nil {
+	// 	// 		slog.Error(err)
+	// 	// 	}
+	// 	// }(stream, msg)
+	// }
 }

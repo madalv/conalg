@@ -1,4 +1,4 @@
-package models
+package model
 
 import (
 	"conalg/pb"
@@ -12,13 +12,14 @@ import (
 type Status string
 
 const (
-	FAST_PEND     Status = "FAST_PENDING"
+	DEFAULT       Status = "DEFAULT"
 	PRE_FAST_PEND Status = "PRE_FAST_PENDING"
+	FAST_PEND     Status = "FAST_PENDING"
 	SLOW_PEND     Status = "SLOW_PENDING"
 	ACC           Status = "ACCEPTED"
 	REJ           Status = "REJECTED"
 	STABLE        Status = "STABLE"
-	DEFAULT       Status = "DEFAULT"
+	DECIDED       Status = "DECIDED"
 )
 
 const (
@@ -47,15 +48,15 @@ func NewRequest(payload []byte, ts uint64, fq int, proposer uint64) Request {
 	return Request{
 		ID:           uuid.NewString(),
 		Payload:      payload,
-		Timestamp:         ts,
-		Pred:         gs.NewSet[string](),
+		Timestamp:    ts,
+		Pred:         gs.NewThreadUnsafeSet[string](),
 		Status:       DEFAULT,
 		Ballot:       0,
 		Forced:       false,
 		ResponseChan: make(chan Response, fq),
 		ProposeTime:  time.Now(),
 		Proposer:     fmt.Sprintf("NODE_%d", proposer),
-		Whitelist:    gs.NewSet[string](),
+		Whitelist:    gs.NewThreadUnsafeSet[string](),
 	}
 }
 
@@ -63,16 +64,16 @@ func FromProposePb(fp *pb.Propose) Request {
 	return Request{
 		ID:        fp.RequestId,
 		Payload:   fp.Payload,
-		Timestamp:      fp.Timestamp,
-		Whitelist: gs.NewSet(fp.Whitelist...),
+		Timestamp: fp.Timestamp,
+		Whitelist: gs.NewThreadUnsafeSet(fp.Whitelist...),
 		Ballot:    uint(fp.Ballot),
-		Pred:      gs.NewSet(fp.Pred...),
+		Pred:      gs.NewThreadUnsafeSet(fp.Pred...),
 	}
 }
 
 func (r *Request) ToProposePb(propType string) *pb.Propose {
 	if r.Whitelist == nil {
-		r.Whitelist = gs.NewSet[string]()
+		r.Whitelist = gs.NewThreadUnsafeSet[string]()
 	}
 	return &pb.Propose{
 		RequestId: r.ID,
