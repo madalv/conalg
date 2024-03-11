@@ -7,9 +7,11 @@ import (
 	"github.com/gookit/slog"
 )
 
-func (c *Caesar) FastPropose(req model.Request) {
-	// slog.Debugf("Fast Proposing %s", req)
-
+func (c *Caesar) FastPropose(reqID string) {
+	req, ok := c.History.Get(reqID)
+	if !ok {
+		slog.Fatalf("Request %s not found in history", reqID)
+	}
 	replies := map[string]model.Response{}
 	maxTimestamp := req.Timestamp
 	pred := gs.NewSet[string]()
@@ -17,14 +19,15 @@ func (c *Caesar) FastPropose(req model.Request) {
 	c.Transport.BroadcastFastPropose(&req)
 
 	for reply := range req.ResponseChan {
-		slog.Debugf("Received %v for req %s", reply, req.ID)
+		req, _ := c.History.Get(reqID)
+		slog.Debugf("Received %v for req %s", reply, req.Payload)
 
 		if reply.Type != model.FASTP_REPLY {
-			slog.Warn("Received wrong type of reply ", reply.Type, " for req ", req.ID)
+			slog.Warn("Received wrong type of reply ", reply.Type, " for req ", req.Payload)
 		}
 
 		if _, ok := replies[reply.From]; ok {
-			slog.Warnf("Received duplicate reply %s for req %s", reply, req.ID)
+			slog.Warnf("Received duplicate reply %s for req %s", reply, req.Payload)
 		} else {
 			replies[reply.From] = reply
 		}
@@ -33,7 +36,9 @@ func (c *Caesar) FastPropose(req model.Request) {
 			maxTimestamp = reply.Timestamp
 		}
 
-		pred.Union(reply.Pred)
+		for p := range reply.Pred.Iter() {
+			pred.Add(p)
+		}
 
 		slog.Debug(pred, maxTimestamp)
 
@@ -41,7 +46,7 @@ func (c *Caesar) FastPropose(req model.Request) {
 			req.Timestamp = maxTimestamp
 			req.Pred = pred
 			c.History.Set(req.ID, req)
-			slog.Debugf("REPLIES have NACK. must RETRY.  req %s\n Replies: \n %s", req, replies)
+			slog.Debugf("REPLIES have NACK. must RETRY.  req %s", req.Payload)
 
 			// TODO retry
 			return
@@ -49,7 +54,7 @@ func (c *Caesar) FastPropose(req model.Request) {
 			req.Timestamp = maxTimestamp
 			req.Pred = pred
 			c.History.Set(req.ID, req)
-			slog.Debugf("FQ REACHED ----- %s. \n Replies: \n %s", req, replies)
+			slog.Debugf("FQ REACHED ----- %s", req.Payload)
 			// TODO stable
 			return
 		} else if len(replies) == c.Cfg.ClassicQuorum {
@@ -57,7 +62,7 @@ func (c *Caesar) FastPropose(req model.Request) {
 			req.Pred = pred
 			c.History.Set(req.ID, req)
 			// TODO send slow propose
-			slog.Debugf("CQ REACHED ----- %s. \n Replies: \n %s", req, replies)
+			slog.Debugf("CQ REACHED ----- %s.", req.Payload)
 			return
 
 		}
@@ -71,9 +76,8 @@ func (c *Caesar) ReceiveFastPropose(fp model.Request) model.Response {
 	var req model.Request
 
 	if !c.History.Has(fp.ID) {
-		slog.Debugf("Adding new request %s to history", fp.ID)
+		slog.Debugf("Adding new request %s to history", fp.Payload)
 		req = fp
-		req.Status = model.PRE_FAST_PEND
 		c.History.Set(req.ID, req)
 	} else {
 		req, _ = c.History.Get(fp.ID)
@@ -82,7 +86,7 @@ func (c *Caesar) ReceiveFastPropose(fp model.Request) model.Response {
 	req.Status = model.FAST_PEND
 	req.Forced = !req.Whitelist.IsEmpty()
 	req.Pred = c.computePred(req.ID, req.Payload, req.Timestamp, req.Whitelist)
-	slog.Debug("computed pred: ", req.Pred)
+	slog.Debug("computed pred: ", req.Pred, req.Status)
 
 	c.History.Set(req.ID, req)
 
@@ -99,5 +103,3 @@ func (c *Caesar) ReceiveFastPropose(fp model.Request) model.Response {
 		return model.NewResponse(req.ID, model.FASTP_REPLY, outcome, req.Pred, c.Cfg.ID, req.Timestamp, req.Ballot)
 	}
 }
-
-

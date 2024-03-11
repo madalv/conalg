@@ -16,10 +16,9 @@ const (
 	PRE_FAST_PEND Status = "PRE_FAST_PENDING"
 	FAST_PEND     Status = "FAST_PENDING"
 	SLOW_PEND     Status = "SLOW_PENDING"
-	ACC           Status = "ACCEPTED"
+	ACC           Status = "ACCEPTED" // request already delivered
 	REJ           Status = "REJECTED"
-	STABLE        Status = "STABLE"
-	DECIDED       Status = "DECIDED"
+	STABLE        Status = "STABLE" // request stable but not delivered
 )
 
 const (
@@ -49,14 +48,14 @@ func NewRequest(payload []byte, ts uint64, fq int, proposer uint64) Request {
 		ID:           uuid.NewString(),
 		Payload:      payload,
 		Timestamp:    ts,
-		Pred:         gs.NewThreadUnsafeSet[string](),
+		Pred:         gs.NewSet[string](),
 		Status:       DEFAULT,
 		Ballot:       0,
 		Forced:       false,
 		ResponseChan: make(chan Response, fq),
 		ProposeTime:  time.Now(),
 		Proposer:     fmt.Sprintf("NODE_%d", proposer),
-		Whitelist:    gs.NewThreadUnsafeSet[string](),
+		Whitelist:    gs.NewSet[string](),
 	}
 }
 
@@ -65,15 +64,15 @@ func FromProposePb(fp *pb.Propose) Request {
 		ID:        fp.RequestId,
 		Payload:   fp.Payload,
 		Timestamp: fp.Timestamp,
-		Whitelist: gs.NewThreadUnsafeSet(fp.Whitelist...),
+		Whitelist: gs.NewSet(fp.Whitelist...),
 		Ballot:    uint(fp.Ballot),
-		Pred:      gs.NewThreadUnsafeSet(fp.Pred...),
+		Pred:      gs.NewSet(fp.Pred...),
 	}
 }
 
 func (r *Request) ToProposePb(propType string) *pb.Propose {
 	if r.Whitelist == nil {
-		r.Whitelist = gs.NewThreadUnsafeSet[string]()
+		r.Whitelist = gs.NewSet[string]()
 	}
 	return &pb.Propose{
 		RequestId: r.ID,

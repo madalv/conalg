@@ -7,6 +7,12 @@ import (
 	"github.com/gookit/slog"
 )
 
+
+func (c *Caesar) StablePropose(req model.Request) {
+	slog.Debugf("Stable Proposing %s", req)
+	c.Transport.BroadcastStablePropose(&req)
+}
+
 func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	c.Ballots.Set(sp.ID, sp.Ballot)
 	var req model.Request
@@ -27,8 +33,36 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 		return err
 	}
 
-	// deliverable?
+	if c.deliverable(req.ID) {
+		c.deliver(req)
+		return nil
+	}
+
+	ch := c.Publisher.Subscribe()
+	defer c.Publisher.CancelSubscription(ch)
+
+	for update := range ch {
+		if update.Status == model.ACC && req.Pred.Contains(update.RequestID) {
+			if c.deliverable(req.ID) {
+				c.deliver(req)
+				return nil
+			}
+		}
+	}
+
 	return nil
+}
+
+func (c *Caesar) deliver(req model.Request) {
+	c.Decided.Add(req.ID)
+	c.Publisher.Publish(model.StatusUpdate{
+		RequestID: req.ID,
+		Status:    model.ACC,
+		Pred:      req.Pred,
+	})
+	c.Executer.Execute(req.Payload)
+	c.History.Remove(req.ID)
+	slog.Debugf("Request %s delivered", req.Payload)
 }
 
 func (c *Caesar) breakLoop(id string) error {
@@ -62,4 +96,15 @@ func (c *Caesar) breakLoop(id string) error {
 	}
 	c.History.Set(req.ID, req)
 	return nil
+}
+
+func (c *Caesar) deliverable(id string) bool {
+	req, ok := c.History.Get(id)
+	if !ok {
+		slog.Errorf("Couldn't retrieve key %s", id)
+		return false
+	}
+	res := req.Pred.IsSubset(c.Decided)
+	slog.Debugf("Request %s is deliverable: %t", id, res)
+	return res
 }

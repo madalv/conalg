@@ -20,19 +20,21 @@ type Receiver interface {
 }
 
 type grpcTransport struct {
-	clients         []*grpcClient
-	fastProposeChan chan *model.Request
-	cfg             config.Config
-	receiver        Receiver
+	clients           []*grpcClient
+	fastProposeChan   chan *model.Request
+	stableProposeChan chan *model.Request
+	cfg               config.Config
+	receiver          Receiver
 }
 
 func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
 	slog.Info("Initializing gRPC Transport Module")
 
 	module := &grpcTransport{
-		clients:         []*grpcClient{},
-		fastProposeChan: make(chan *model.Request, 100),
-		cfg:             cfg,
+		clients:           []*grpcClient{},
+		fastProposeChan:   make(chan *model.Request, 50),
+		stableProposeChan: make(chan *model.Request, 50),
+		cfg:               cfg,
 	}
 
 	go module.ListenToChannels()
@@ -48,7 +50,6 @@ func (t *grpcTransport) ListenToChannels() {
 	for req := range t.fastProposeChan {
 		slog.Info("Broadcasting Fast Propose")
 		for _, client := range t.clients {
-			// slog.Info("Sending Fast Propose %v", req)
 			client.sendFastPropose(req)
 		}
 	}
@@ -69,6 +70,10 @@ func (t *grpcTransport) RunServer() error {
 
 func (t *grpcTransport) BroadcastFastPropose(req *model.Request) {
 	t.fastProposeChan <- req
+}
+
+func (t *grpcTransport) BroadcastStablePropose(req *model.Request) {
+	t.stableProposeChan <- req
 }
 
 func (t *grpcTransport) ConnectToNodes() error {

@@ -49,22 +49,20 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 }
 
 func (srv *grpcServer) StableStream(stream pb.Conalg_StableStreamServer) error {
-	return nil
-	// for {
-	// 	msg, err := stream.Recv()
-	// 	if err == io.EOF {
-	// 		return nil
-	// 	}
-	// 	if err != nil {
-	// 		return err
-	// 	}
+	for {
+		msg, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
 
-	// 	// go func(stream pb.Conalg_StableStreamServer, msg *pb.Stable) {
-	// 	// 	outcome := srv.receiver.ReceiveStable(model.FromStablePb(msg))
-	// 	// 	err = stream.Send(model.ToResponsePb(outcome))
-	// 	// 	if err != nil {
-	// 	// 		slog.Error(err)
-	// 	// 	}
-	// 	// }(stream, msg)
-	// }
+		go func(stream pb.Conalg_StableStreamServer, msg *pb.Propose) {
+			err := srv.receiver.ReceiveStablePropose(model.FromProposePb(msg))
+			if err != nil {
+				slog.Error(err)
+			}
+		}(stream, msg)
+	}
 }

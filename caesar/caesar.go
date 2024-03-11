@@ -14,6 +14,7 @@ import (
 
 type Transport interface {
 	BroadcastFastPropose(req *model.Request)
+	BroadcastStablePropose(req *model.Request)
 	RunServer() error
 	ConnectToNodes() error
 }
@@ -42,6 +43,7 @@ func NewCaesar(Cfg config.Config, transport Transport, app Application) *Caesar 
 		Cfg:       Cfg,
 		Transport: transport,
 		Executer:  app,
+		Decided:   gs.NewSet[string](),
 		Publisher: util.NewBroadcastServer[model.StatusUpdate](
 			context.Background(),
 			make(chan model.StatusUpdate)),
@@ -52,21 +54,19 @@ func (c *Caesar) Propose(payload []byte) {
 	req := model.NewRequest(payload, c.Clock.NewTimestamp(), c.Cfg.FastQuorum, c.Cfg.ID)
 	slog.Debugf("Proposing %v", req)
 	c.History.Set(req.ID, req)
-	go c.FastPropose(req)
+	go c.FastPropose(req.ID)
 }
 
 // computePred computes the predecessor set for a request
 func (c *Caesar) computePred(reqID string, payload []byte, timestamp uint64, whitelist gs.Set[string]) (pred gs.Set[string]) {
 	slog.Debug("Computing PRED: ", reqID, payload, timestamp, whitelist)
 	pred = gs.NewSet[string]()
-	iterator := c.History.IterBuffered()
+
 	if whitelist == nil {
 		whitelist = gs.NewSet[string]()
 	}
 
-	for kv := range iterator {
-		_, req := kv.Key, kv.Val
-
+	c.History.IterCb(func(k string, req model.Request) {
 		if reqID != req.ID && c.Executer.DetermineConflict(payload, req.Payload) {
 			if whitelist.IsEmpty() && req.Timestamp < timestamp {
 				pred.Add(req.ID)
@@ -79,7 +79,7 @@ func (c *Caesar) computePred(reqID string, payload []byte, timestamp uint64, whi
 				}
 			}
 		}
-	}
+	})
 	return pred
 }
 
@@ -105,24 +105,24 @@ func (c *Caesar) ReceiveResponse(r model.Response) {
 func (c *Caesar) computeWaitlist(reqID string, payload []byte, timestamp uint64) (gs.Set[string], error) {
 	slog.Debugf("Computing waitlist for request %s", payload)
 	waitgroup := gs.NewSet[string]()
-	iterator := c.History.IterBuffered()
-	for kv := range iterator {
-		_, req := kv.Key, kv.Val
+	var err error
 
+	c.History.IterCb(func(k string, req model.Request) {
 		slog.Debug(req.ID, string(req.Payload), req.Timestamp, req.Status)
 
 		if reqID != req.ID &&
 			c.Executer.DetermineConflict(payload, req.Payload) &&
 			req.Timestamp > timestamp &&
 			!req.Pred.Contains(reqID) {
-			if req.Status == model.STABLE || req.Status == model.ACC {
-				return nil, errors.New("auto NACK: stable request doesn't contain the request in its predecessor set")
+			if req.Status == model.STABLE {
+				err = errors.New("auto NACK: stable request doesn't contain the request in its predecessor set")
 			} else {
 				waitgroup.Add(req.ID)
 			}
 		}
-	}
-	return waitgroup, nil
+	})
+
+	return waitgroup, err
 }
 
 /*

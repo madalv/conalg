@@ -21,7 +21,7 @@ func (s *SampleApp) DetermineConflict(c1, c2 []byte) bool {
 }
 
 func (s *SampleApp) Execute(c []byte) {
-	slog.Infof(" ... doing whatever i want with %s", c)
+	slog.Infof(" -------- ALERT! ... doing whatever i want with %s", c)
 }
 
 func (s *SampleApp) SetConalgModule(m caesar.Conalg) {

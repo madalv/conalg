@@ -26,7 +26,6 @@ func newGRPCClient(addr string, rec Receiver) (*grpcClient, error) {
 	}
 
 	client := pb.NewConalgClient(conn)
-	client.FastProposeStream(context.Background())
 
 	slog.Infof("Initializing Fast Propose Stream on %s", addr)
 	fpStream, err := client.FastProposeStream(context.Background())
@@ -55,7 +54,7 @@ func (c *grpcClient) sendFastPropose(req *model.Request) {
 func (c *grpcClient) receiveFastProposeResponse() {
 	for {
 		msg, err := c.fastProposeStream.Recv()
-		slog.Info(c.address)
+		// slog.Info(c.address)
 		if err == io.EOF {
 			slog.Warn("EOF")
 			break
@@ -63,7 +62,7 @@ func (c *grpcClient) receiveFastProposeResponse() {
 		if err != nil {
 			slog.Error(err)
 		}
-		slog.Debugf("Received Fast Propose Response: %v", msg)
+		// slog.Debugf("Received Fast Propose Response: %v", msg)
 		c.receiver.ReceiveResponse(model.FromResponsePb(msg))
 	}
 }
