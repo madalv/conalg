@@ -5,6 +5,7 @@ import (
 	"conalg/pb"
 	"context"
 	"io"
+	"time"
 
 	"github.com/gookit/slog"
 	"google.golang.org/grpc"
@@ -13,9 +14,10 @@ import (
 
 type grpcClient struct {
 	pb.ConalgClient
-	fastProposeStream pb.Conalg_FastProposeStreamClient
-	address           string
-	receiver          Receiver
+	fastProposeStream   pb.Conalg_FastProposeStreamClient
+	stableProposeStream pb.Conalg_StableStreamClient
+	address             string
+	receiver            Receiver
 }
 
 func newGRPCClient(addr string, rec Receiver) (*grpcClient, error) {
@@ -33,9 +35,15 @@ func newGRPCClient(addr string, rec Receiver) (*grpcClient, error) {
 		slog.Fatal(err)
 	}
 
+	stableStream, err := client.StableStream(context.Background())
+	if err != nil {
+		slog.Fatal(err)
+	}
+
 	c := &grpcClient{
 		client,
 		fpStream,
+		stableStream,
 		addr,
 		rec,
 	}
@@ -45,7 +53,16 @@ func newGRPCClient(addr string, rec Receiver) (*grpcClient, error) {
 }
 
 func (c *grpcClient) sendFastPropose(req *model.Request) {
+	time.Sleep(200 * time.Millisecond)
 	err := c.fastProposeStream.Send(req.ToProposePb(model.FASTP_PROP))
+	if err != nil {
+		slog.Error(err)
+	}
+}
+
+func (c *grpcClient) sendStablePropose(req *model.Request) {
+	time.Sleep(200 * time.Millisecond)
+	err := c.stableProposeStream.Send(req.ToProposePb(model.STABLE_PROP))
 	if err != nil {
 		slog.Error(err)
 	}

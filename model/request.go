@@ -3,7 +3,6 @@ package model
 import (
 	"conalg/pb"
 	"fmt"
-	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
@@ -29,16 +28,16 @@ const (
 )
 
 type Request struct {
-	Proposer     string
-	ID           string
-	Payload      []byte
-	Timestamp    uint64
-	Pred         gs.Set[string]
-	Status       Status
-	Ballot       uint
-	Forced       bool
-	ProposeTime  time.Time
-	StableTime   time.Time
+	Proposer  string
+	ID        string
+	Payload   []byte
+	Timestamp uint64
+	Pred      gs.Set[string]
+	Status    Status
+	Ballot    uint
+	Forced    bool
+	// ProposeTime  time.Time
+	// StableTime   time.Time
 	ResponseChan chan Response
 	Whitelist    gs.Set[string]
 }
@@ -53,9 +52,9 @@ func NewRequest(payload []byte, ts uint64, fq int, proposer uint64) Request {
 		Ballot:       0,
 		Forced:       false,
 		ResponseChan: make(chan Response, fq),
-		ProposeTime:  time.Now(),
-		Proposer:     fmt.Sprintf("NODE_%d", proposer),
-		Whitelist:    gs.NewSet[string](),
+		// ProposeTime:  time.Now(),
+		Proposer:  fmt.Sprintf("NODE_%d", proposer),
+		Whitelist: gs.NewSet[string](),
 	}
 }
 

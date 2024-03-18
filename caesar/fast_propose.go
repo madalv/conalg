@@ -7,6 +7,7 @@ import (
 	"github.com/gookit/slog"
 )
 
+// TODO separate model for propose from requests!!!
 func (c *Caesar) FastPropose(reqID string) {
 	req, ok := c.History.Get(reqID)
 	if !ok {
@@ -55,7 +56,7 @@ func (c *Caesar) FastPropose(reqID string) {
 			req.Pred = pred
 			c.History.Set(req.ID, req)
 			slog.Debugf("FQ REACHED ----- %s", req.Payload)
-			// TODO stable
+			c.StablePropose(req)
 			return
 		} else if len(replies) == c.Cfg.ClassicQuorum {
 			req.Timestamp = maxTimestamp

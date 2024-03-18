@@ -37,7 +37,8 @@ func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
 		cfg:               cfg,
 	}
 
-	go module.ListenToChannels()
+	go module.ListenFastProposeChan()
+	go module.ListenStableProposeChan()
 
 	return module, nil
 }
@@ -46,11 +47,20 @@ func (t *grpcTransport) SetReceiver(r Receiver) {
 	t.receiver = r
 }
 
-func (t *grpcTransport) ListenToChannels() {
+func (t *grpcTransport) ListenFastProposeChan() {
 	for req := range t.fastProposeChan {
 		slog.Info("Broadcasting Fast Propose")
 		for _, client := range t.clients {
 			client.sendFastPropose(req)
+		}
+	}
+}
+
+func (t *grpcTransport) ListenStableProposeChan() {
+	for req := range t.stableProposeChan {
+		slog.Info("Broadcasting Stable Propose")
+		for _, client := range t.clients {
+			client.sendStablePropose(req)
 		}
 	}
 }

@@ -3,22 +3,24 @@ package caesar
 import (
 	"conalg/model"
 	"errors"
+	"time"
 
 	"github.com/gookit/slog"
 )
 
-
 func (c *Caesar) StablePropose(req model.Request) {
-	slog.Debugf("Stable Proposing %s", req)
+	slog.Debugf("Stable Proposing %s", req.Payload)
 	c.Transport.BroadcastStablePropose(&req)
 }
 
 func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
+	time.Sleep(2 * time.Second)
+	slog.Debugf("Received stable propose for %s: %v", sp.Payload, sp)
 	c.Ballots.Set(sp.ID, sp.Ballot)
 	var req model.Request
 
 	if !c.History.Has(sp.ID) {
-		slog.Errorf("Received stable propose for unknown request %s", sp.ID)
+		slog.Errorf("Received stable propose for unknown request %+v", sp.ID)
 		req = sp
 	} else {
 		req, _ = c.History.Get(sp.ID)
@@ -29,8 +31,9 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 
 	// break loop
 	err := c.breakLoop(req.ID)
-	if err != nil {
-		return err
+	for err != nil {
+		time.Sleep(10 * time.Second)
+		err = c.breakLoop(req.ID)
 	}
 
 	if c.deliverable(req.ID) {
@@ -80,7 +83,9 @@ func (c *Caesar) breakLoop(id string) error {
 	iterator := req.Pred.Iter()
 	for predID := range iterator {
 		pred, ok := c.History.Get(predID)
-		if !ok {
+		if !ok && c.Decided.Contains(predID) {
+			continue
+		} else if !ok {
 			slog.Errorf("Couldn't retrieve key %s", id)
 			return errors.New("request not found")
 		}
