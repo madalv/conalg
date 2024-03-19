@@ -105,7 +105,6 @@ func (t *grpcTransport) ConnectToNodes() error {
 	}
 
 	clients = append(clients, c)
-	// slog.Debug(clients)
 
 	t.clients = clients
 	return nil

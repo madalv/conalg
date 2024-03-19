@@ -10,14 +10,13 @@ import (
 
 // TODO add start/end times for requests to track
 
-
 // TODO move this bs somewhere else
 type SampleApp struct {
 	conalg caesar.Conalg
 }
 
 func (s *SampleApp) DetermineConflict(c1, c2 []byte) bool {
-	return len(c1) == len(c2)
+	return string(c1) == string(c2)
 }
 
 func (s *SampleApp) Execute(c []byte) {
@@ -29,6 +28,11 @@ func (s *SampleApp) SetConalgModule(m caesar.Conalg) {
 }
 
 func main() {
+
+	slog.Configure(func(logger *slog.SugaredLogger) {
+		f := logger.Formatter.(*slog.TextFormatter)
+		f.EnableColor = true
+	})
 
 	app := SampleApp{}
 	conalg := caesar.InitConalgModule(&app)

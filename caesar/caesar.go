@@ -108,7 +108,7 @@ func (c *Caesar) computeWaitlist(reqID string, payload []byte, timestamp uint64)
 	var err error
 
 	c.History.IterCb(func(k string, req model.Request) {
-		slog.Debug(req.ID, string(req.Payload), req.Timestamp, req.Status)
+		// slog.Debug(req.ID, string(req.Payload), req.Timestamp, req.Status)
 
 		if reqID != req.ID &&
 			c.Executer.DetermineConflict(payload, req.Payload) &&

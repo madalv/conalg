@@ -21,14 +21,14 @@ func (c *Caesar) FastPropose(reqID string) {
 
 	for reply := range req.ResponseChan {
 		req, _ := c.History.Get(reqID)
-		slog.Debugf("Received %v for req %s", reply, req.Payload)
+		slog.Debugf("Received %v for req %s %s", reply, req.Payload, req.ID)
 
 		if reply.Type != model.FASTP_REPLY {
-			slog.Warn("Received wrong type of reply ", reply.Type, " for req ", req.Payload)
+			slog.Warnf("Received unexpected reply %s for req %s %s", reply, req.Payload, req.ID)
 		}
 
 		if _, ok := replies[reply.From]; ok {
-			slog.Warnf("Received duplicate reply %s for req %s", reply, req.Payload)
+			slog.Warnf("Received duplicate reply %s for req %s %s", reply, req.Payload, req.ID)
 		} else {
 			replies[reply.From] = reply
 		}
@@ -47,7 +47,7 @@ func (c *Caesar) FastPropose(reqID string) {
 			req.Timestamp = maxTimestamp
 			req.Pred = pred
 			c.History.Set(req.ID, req)
-			slog.Debugf("REPLIES have NACK. must RETRY.  req %s", req.Payload)
+			slog.Debugf("REPLIES have NACK. must RETRY.  req %s %s", req.Payload, req.ID)
 
 			// TODO retry
 			return
@@ -55,7 +55,7 @@ func (c *Caesar) FastPropose(reqID string) {
 			req.Timestamp = maxTimestamp
 			req.Pred = pred
 			c.History.Set(req.ID, req)
-			slog.Debugf("FQ REACHED ----- %s", req.Payload)
+			slog.Debugf("FQ REACHED ----- %s %s", req.Payload,  req.ID)
 			c.StablePropose(req)
 			return
 		} else if len(replies) == c.Cfg.ClassicQuorum {
@@ -63,7 +63,7 @@ func (c *Caesar) FastPropose(reqID string) {
 			req.Pred = pred
 			c.History.Set(req.ID, req)
 			// TODO send slow propose
-			slog.Debugf("CQ REACHED ----- %s.", req.Payload)
+			slog.Debugf("CQ REACHED ----- %s %s", req.Payload, req.ID)
 			return
 
 		}
@@ -77,7 +77,7 @@ func (c *Caesar) ReceiveFastPropose(fp model.Request) model.Response {
 	var req model.Request
 
 	if !c.History.Has(fp.ID) {
-		slog.Debugf("Adding new request %s to history", fp.Payload)
+		slog.Debugf("Adding new request %s %s to history", fp.Payload, fp.ID)
 		req = fp
 		c.History.Set(req.ID, req)
 	} else {
