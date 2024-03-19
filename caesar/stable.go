@@ -15,7 +15,7 @@ func (c *Caesar) StablePropose(req model.Request) {
 
 func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	time.Sleep(2 * time.Second)
-	slog.Debugf("Received stable propose for %s %s: %+v",sp.ID,  sp.Payload, sp)
+	slog.Debugf("Received stable propose for %s %s: %+v", sp.ID, sp.Payload, sp)
 	c.Ballots.Set(sp.ID, sp.Ballot)
 	var req model.Request
 
@@ -33,6 +33,7 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	err := c.breakLoop(req.ID) // TODO add count for tries so it doesn't loop forever
 	for err != nil {
 		time.Sleep(10 * time.Second)
+		slog.Error(err)
 		err = c.breakLoop(req.ID)
 	}
 
@@ -110,6 +111,9 @@ func (c *Caesar) deliverable(id string) bool {
 		return false
 	}
 	res := req.Pred.IsSubset(c.Decided)
+	if !res {
+		slog.Warnf(req.Pred.Difference(c.Decided).String())
+	}
 	slog.Debugf("Request %s %s is deliverable: %t", id, req.Payload, res)
 	return res
 }

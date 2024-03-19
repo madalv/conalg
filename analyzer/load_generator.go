@@ -21,7 +21,7 @@ var keyPool = []string{
 
 func sendRequest(url, payload string, wg *sync.WaitGroup) {
 	defer wg.Done()
-	time.Sleep(time.Duration(rand.Intn(30)) * time.Second)
+	time.Sleep(time.Duration(rand.Intn(15)) * time.Second)
 
 	slog.Infof("Sending request to %s with payload %s", url, payload)
 
@@ -62,7 +62,7 @@ func main() {
 		}
 		wg.Add(1)
 		randomIndex := rand.Intn(len(urls))
-		go sendRequest(urls[randomIndex], chooseName(70), &wg)
+		go sendRequest(urls[randomIndex], chooseName(50), &wg)
 	}
 
 	wg.Wait()
