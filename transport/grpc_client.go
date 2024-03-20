@@ -5,7 +5,6 @@ import (
 	"conalg/pb"
 	"context"
 	"io"
-	"time"
 
 	"github.com/gookit/slog"
 	"google.golang.org/grpc"
@@ -53,7 +52,7 @@ func newGRPCClient(addr string, rec Receiver) (*grpcClient, error) {
 }
 
 func (c *grpcClient) sendFastPropose(req *model.Request) {
-	time.Sleep(200 * time.Millisecond)
+	// time.Sleep(200 * time.Millisecond)
 	err := c.fastProposeStream.Send(req.ToProposePb(model.FASTP_PROP))
 	if err != nil {
 		slog.Error(err)
@@ -61,7 +60,7 @@ func (c *grpcClient) sendFastPropose(req *model.Request) {
 }
 
 func (c *grpcClient) sendStablePropose(req *model.Request) {
-	time.Sleep(200 * time.Millisecond)
+	// time.Sleep(200 * time.Millisecond)
 	err := c.stableProposeStream.Send(req.ToProposePb(model.STABLE_PROP))
 	if err != nil {
 		slog.Error(err)

@@ -31,6 +31,7 @@ type Caesar struct {
 	// used in the wait function, to notify about the status of a request
 	Publisher util.Publisher[model.StatusUpdate]
 	Decided   gs.Set[string]
+	Analyzer  *util.Analyzer
 }
 
 func NewCaesar(Cfg config.Config, transport Transport, app Application) *Caesar {
@@ -47,6 +48,7 @@ func NewCaesar(Cfg config.Config, transport Transport, app Application) *Caesar 
 		Publisher: util.NewBroadcastServer[model.StatusUpdate](
 			context.Background(),
 			make(chan model.StatusUpdate)),
+		Analyzer: util.NewAnalyzer(),
 	}
 }
 

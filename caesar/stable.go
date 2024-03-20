@@ -3,6 +3,7 @@ package caesar
 import (
 	"conalg/model"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/gookit/slog"
@@ -14,7 +15,7 @@ func (c *Caesar) StablePropose(req model.Request) {
 }
 
 func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
-	time.Sleep(2 * time.Second)
+	// time.Sleep(2 * time.Second)
 	slog.Debugf("Received stable propose for %s %s: %+v", sp.ID, sp.Payload, sp)
 	c.Ballots.Set(sp.ID, sp.Ballot)
 	var req model.Request
@@ -27,6 +28,7 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	}
 
 	req.Status = model.STABLE
+	req.StableTime = time.Now()
 	c.History.Set(req.ID, req)
 
 	// break loop
@@ -67,6 +69,10 @@ func (c *Caesar) deliver(req model.Request) {
 	c.Executer.Execute(req.Payload)
 	c.History.Remove(req.ID)
 	slog.Debugf("Request %s %s delivered", req.Payload, req.ID)
+	// slog.Debug(req.Proposer)
+	if req.Proposer == fmt.Sprintf("NODE_%d", c.Cfg.ID) {
+		c.Analyzer.SendReq(req)
+	}
 }
 
 func (c *Caesar) breakLoop(id string) error {
