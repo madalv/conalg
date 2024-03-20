@@ -8,7 +8,6 @@ import (
 	"github.com/gookit/slog"
 )
 
-// TODO add start/end times for requests to track
 
 // TODO move this bs somewhere else
 type SampleApp struct {
