@@ -16,6 +16,7 @@ the consensus module (aka Caesar module)
 type Receiver interface {
 	ReceiveResponse(model.Response)
 	ReceiveFastPropose(model.Request) model.Response
+	ReceiveRetryPropose(model.Request) model.Response
 	ReceiveStablePropose(model.Request) error
 }
 
@@ -23,6 +24,7 @@ type grpcTransport struct {
 	clients           []*grpcClient
 	fastProposeChan   chan *model.Request
 	stableProposeChan chan *model.Request
+	retryProposeChan  chan *model.Request
 	cfg               config.Config
 	receiver          Receiver
 }
@@ -34,11 +36,13 @@ func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
 		clients:           []*grpcClient{},
 		fastProposeChan:   make(chan *model.Request, 50),
 		stableProposeChan: make(chan *model.Request, 50),
+		retryProposeChan:  make(chan *model.Request, 50),
 		cfg:               cfg,
 	}
 
 	go module.ListenFastProposeChan()
 	go module.ListenStableProposeChan()
+	go module.ListenRetryProposeChan()
 
 	return module, nil
 }
@@ -49,16 +53,22 @@ func (t *grpcTransport) SetReceiver(r Receiver) {
 
 func (t *grpcTransport) ListenFastProposeChan() {
 	for req := range t.fastProposeChan {
-		slog.Info("Broadcasting Fast Propose")
 		for _, client := range t.clients {
 			client.sendFastPropose(req)
 		}
 	}
 }
 
+func (t *grpcTransport) ListenRetryProposeChan() {
+	for req := range t.retryProposeChan {
+		for _, client := range t.clients {
+			client.sendRetryPropose(req)
+		}
+	}
+}
+
 func (t *grpcTransport) ListenStableProposeChan() {
 	for req := range t.stableProposeChan {
-		slog.Info("Broadcasting Stable Propose")
 		for _, client := range t.clients {
 			client.sendStablePropose(req)
 		}
@@ -84,6 +94,10 @@ func (t *grpcTransport) BroadcastFastPropose(req *model.Request) {
 
 func (t *grpcTransport) BroadcastStablePropose(req *model.Request) {
 	t.stableProposeChan <- req
+}
+
+func (t *grpcTransport) BroadcastRetryPropose(req *model.Request) {
+	t.retryProposeChan <- req
 }
 
 func (t *grpcTransport) ConnectToNodes() error {

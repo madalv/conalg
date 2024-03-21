@@ -10,7 +10,7 @@ import (
 )
 
 func (c *Caesar) StablePropose(req model.Request) {
-	slog.Debugf("Stable Proposing %s %s", req.Payload, req.ID)
+	slog.Infof("Stable Proposing %s %s", req.Payload, req.ID)
 	c.Transport.BroadcastStablePropose(&req)
 }
 

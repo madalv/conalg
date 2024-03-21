@@ -5,6 +5,7 @@ import (
 	"conalg/pb"
 	"context"
 	"io"
+	"time"
 
 	"github.com/gookit/slog"
 	"google.golang.org/grpc"
@@ -15,6 +16,7 @@ type grpcClient struct {
 	pb.ConalgClient
 	fastProposeStream   pb.Conalg_FastProposeStreamClient
 	stableProposeStream pb.Conalg_StableStreamClient
+	retryProposeStream  pb.Conalg_RetryStreamClient
 	address             string
 	receiver            Receiver
 }
@@ -39,20 +41,27 @@ func newGRPCClient(addr string, rec Receiver) (*grpcClient, error) {
 		slog.Fatal(err)
 	}
 
+	retryStream, err := client.RetryStream(context.Background())
+	if err != nil {
+		slog.Fatal(err)
+	}
+
 	c := &grpcClient{
 		client,
 		fpStream,
 		stableStream,
+		retryStream,
 		addr,
 		rec,
 	}
 
 	go c.receiveFastProposeResponse()
+	go c.receiveRetryResponse()
 	return c, nil
 }
 
 func (c *grpcClient) sendFastPropose(req *model.Request) {
-	// time.Sleep(200 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	err := c.fastProposeStream.Send(req.ToProposePb(model.FASTP_PROP))
 	if err != nil {
 		slog.Error(err)
@@ -60,17 +69,25 @@ func (c *grpcClient) sendFastPropose(req *model.Request) {
 }
 
 func (c *grpcClient) sendStablePropose(req *model.Request) {
-	// time.Sleep(200 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	err := c.stableProposeStream.Send(req.ToProposePb(model.STABLE_PROP))
 	if err != nil {
 		slog.Error(err)
 	}
 }
 
-func (c *grpcClient) receiveFastProposeResponse() {
+func (c *grpcClient) sendRetryPropose(req *model.Request) {
+	time.Sleep(50 * time.Millisecond)
+	err := c.retryProposeStream.Send(req.ToProposePb(model.RETRY_PROP))
+	if err != nil {
+		slog.Error(err)
+	}
+}
+
+func (c *grpcClient) receiveRetryResponse() {
 	for {
-		msg, err := c.fastProposeStream.Recv()
-		// slog.Info(c.address)
+		msg, err := c.retryProposeStream.Recv()
+
 		if err == io.EOF {
 			slog.Warn("EOF")
 			break
@@ -78,7 +95,23 @@ func (c *grpcClient) receiveFastProposeResponse() {
 		if err != nil {
 			slog.Error(err)
 		}
-		// slog.Debugf("Received Fast Propose Response: %v", msg)
+
+		c.receiver.ReceiveResponse(model.FromResponsePb(msg))
+	}
+}
+
+func (c *grpcClient) receiveFastProposeResponse() {
+	for {
+		msg, err := c.fastProposeStream.Recv()
+
+		if err == io.EOF {
+			slog.Warn("EOF")
+			break
+		}
+		if err != nil {
+			slog.Error(err)
+		}
+
 		c.receiver.ReceiveResponse(model.FromResponsePb(msg))
 	}
 }

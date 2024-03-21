@@ -28,5 +28,6 @@ message Response {
 
 service Conalg {
   rpc FastProposeStream(stream Propose) returns (stream Response);
+  rpc RetryStream(stream Propose) returns (stream Response);
   rpc StableStream(stream Propose) returns (google.protobuf.Empty);
 }

@@ -62,7 +62,7 @@ func main() {
 		}
 		wg.Add(1)
 		randomIndex := rand.Intn(len(urls))
-		go sendRequest(urls[randomIndex], chooseName(50), &wg)
+		go sendRequest(urls[randomIndex], chooseName(70), &wg)
 	}
 
 	wg.Wait()
