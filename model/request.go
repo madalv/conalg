@@ -12,12 +12,12 @@ import (
 type Status string
 
 const (
-	DEFAULT       Status = "DEFAULT"
-	PRE_FAST_PEND Status = "PRE_FAST_PENDING"
+	DEFAULT       Status = "DEFAULT" // initial state, pre-fast
 	FAST_PEND     Status = "FAST_PENDING"
 	SLOW_PEND     Status = "SLOW_PENDING"
-	ACC           Status = "ACCEPTED" // request already delivered
+	ACC           Status = "ACCEPTED" // request accepted on retry
 	REJ           Status = "REJECTED"
+	DECIDED 			Status = "DECIDED" // request delivered - final state
 	STABLE        Status = "STABLE" // request stable but not delivered
 )
 

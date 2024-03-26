@@ -54,7 +54,7 @@ func (t *grpcTransport) SetReceiver(r Receiver) {
 func (t *grpcTransport) ListenFastProposeChan() {
 	for req := range t.fastProposeChan {
 		for _, client := range t.clients {
-			client.sendFastPropose(req)
+			go client.sendFastPropose(req)
 		}
 	}
 }
@@ -62,7 +62,7 @@ func (t *grpcTransport) ListenFastProposeChan() {
 func (t *grpcTransport) ListenRetryProposeChan() {
 	for req := range t.retryProposeChan {
 		for _, client := range t.clients {
-			client.sendRetryPropose(req)
+			go client.sendRetryPropose(req)
 		}
 	}
 }
@@ -70,7 +70,7 @@ func (t *grpcTransport) ListenRetryProposeChan() {
 func (t *grpcTransport) ListenStableProposeChan() {
 	for req := range t.stableProposeChan {
 		for _, client := range t.clients {
-			client.sendStablePropose(req)
+			go client.sendStablePropose(req)
 		}
 	}
 }
@@ -104,7 +104,7 @@ func (t *grpcTransport) ConnectToNodes() error {
 	slog.Info("Connecting to nodes")
 	clients := make([]*grpcClient, 0, len(t.cfg.Nodes)+1)
 	for _, node := range t.cfg.Nodes {
-		c, err := newGRPCClient(node, t.receiver)
+		c, err := newGRPCClient(node, t.receiver, false)
 
 		if err != nil {
 			return err
@@ -113,7 +113,7 @@ func (t *grpcTransport) ConnectToNodes() error {
 		clients = append(clients, c)
 	}
 
-	c, err := newGRPCClient(t.cfg.Port, t.receiver)
+	c, err := newGRPCClient(t.cfg.Port, t.receiver, true)
 	if err != nil {
 		return err
 	}

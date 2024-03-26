@@ -51,9 +51,10 @@ func main() {
 		// Add more URLs if needed
 	}
 
+
 	startTime := time.Now()
 	timeout := 30 * time.Second
-	commandNr := 100
+	commandNr := 50
 	wg := sync.WaitGroup{}
 
 	for i := 1; i <= commandNr; i++ {

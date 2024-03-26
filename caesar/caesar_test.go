@@ -104,7 +104,7 @@ func TestComputePred_WithWhitelist(t *testing.T) {
 	history.Set("reqID2", model.Request{ID: "reqID2", Payload: []byte("payload2"), Timestamp: 30, Status: model.ACC})
 	history.Set("reqID2.5", model.Request{ID: "reqID2.5", Payload: []byte("payload2"), Timestamp: 31, Status: model.SLOW_PEND})
 	history.Set("reqID3", model.Request{ID: "reqID3", Payload: []byte("payload34"), Timestamp: 21, Status: model.STABLE})
-	history.Set("reqID4", model.Request{ID: "reqID4", Payload: []byte("payload6"), Timestamp: 22, Status: model.PRE_FAST_PEND})
+	history.Set("reqID4", model.Request{ID: "reqID4", Payload: []byte("payload6"), Timestamp: 22, Status: model.FAST_PEND})
 
 	// Set the mock history in the Caesar instance
 	caesar.History = history
