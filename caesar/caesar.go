@@ -48,7 +48,7 @@ func NewCaesar(Cfg config.Config, transport Transport, app Application) *Caesar 
 		Decided:   gs.NewSet[string](),
 		Publisher: util.NewBroadcastServer[model.StatusUpdate](
 			context.Background(),
-			make(chan model.StatusUpdate, 3000),),
+			make(chan model.StatusUpdate)),
 		Analyzer: util.NewAnalyzer(),
 	}
 }
@@ -106,7 +106,7 @@ func (c *Caesar) ReceiveResponse(r model.Response) {
 }
 
 func (c *Caesar) computeWaitlist(reqID string, payload []byte, timestamp uint64) (gs.Set[string], error) {
-	slog.Debugf("Computing waitlist for request /%s %s", reqID, payload)
+	slog.Debugf("Computing waitlist for request %s %s", reqID, payload)
 	waitgroup := gs.NewSet[string]()
 	var err error
 
@@ -145,33 +145,35 @@ func (c *Caesar) wait(id string, payload []byte, timestamp uint64) bool {
 		return false
 	}
 
-	slog.Debugf("Request /%s %s is waiting with waitlist %v", id, payload, waitlist)
+	slog.Debugf("Request %s %s is waiting with waitlist %v", id, payload, waitlist)
 
 	if waitlist.IsEmpty() {
 		return true
 	}
 
 	ch := c.Publisher.Subscribe()
-	defer c.Publisher.CancelSubscription(ch)
 
 	for update := range ch {
-		if waitlist.Contains(update.RequestID) {
-			if update.Status == model.STABLE || update.Status == model.ACC {
-				slog.Infof(". . . Got update %v for waiting req /%s", update, id)
-				if !update.Pred.Contains(id) {
-					slog.Warnf("Request /%s %s is DONE WAITING - false outcome", id, payload)
-					return false
-				} else {
-					waitlist.Remove(update.RequestID)
-				}
-			}
+		if !waitlist.Contains(update.RequestID) {
+			continue
+		}
 
-			if waitlist.IsEmpty() {
-				slog.Warnf("Request /%s %s is DONE WAITING - true outcome", id, payload)
-				return true
+		if update.Status == model.DECIDED || update.Status == model.STABLE {
+
+			if !update.Pred.Contains(id) {
+				c.Publisher.CancelSubscription(ch)
+				slog.Warnf("Request %s %s is DONE WAITING - false outcome", id, payload)
+				return false
+			} else {
+				waitlist.Remove(update.RequestID)
 			}
 		}
-	}
 
+		if waitlist.IsEmpty() {
+			c.Publisher.CancelSubscription(ch)
+			slog.Warnf("Request %s %s is DONE WAITING - true outcome", id, payload)
+			return true
+		}
+	}
 	return false
 }

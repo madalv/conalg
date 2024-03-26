@@ -67,7 +67,6 @@ func (c *Caesar) FastPropose(reqID string) {
 			// TODO send slow propose
 			slog.Infof("CQ REACHED (timeout exceeded, slow proposing) ----- %s %s", req.Payload, req.ID)
 			return
-
 		}
 	}
 }
