@@ -19,9 +19,10 @@ type grpcClient struct {
 	retryProposeStream  pb.Conalg_RetryStreamClient
 	address             string
 	receiver            Receiver
+	self                bool
 }
 
-func newGRPCClient(addr string, rec Receiver) (*grpcClient, error) {
+func newGRPCClient(addr string, rec Receiver, self bool) (*grpcClient, error) {
 	slog.Infof("Starting Client on %s", addr)
 	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -53,6 +54,7 @@ func newGRPCClient(addr string, rec Receiver) (*grpcClient, error) {
 		retryStream,
 		addr,
 		rec,
+		self,
 	}
 
 	go c.receiveFastProposeResponse()
@@ -61,7 +63,9 @@ func newGRPCClient(addr string, rec Receiver) (*grpcClient, error) {
 }
 
 func (c *grpcClient) sendFastPropose(req *model.Request) {
-	time.Sleep(50 * time.Millisecond)
+	if !c.self {
+		time.Sleep(50 * time.Millisecond)
+	}
 	err := c.fastProposeStream.Send(req.ToProposePb(model.FASTP_PROP))
 	if err != nil {
 		slog.Error(err)
@@ -69,7 +73,9 @@ func (c *grpcClient) sendFastPropose(req *model.Request) {
 }
 
 func (c *grpcClient) sendStablePropose(req *model.Request) {
-	time.Sleep(50 * time.Millisecond)
+	if !c.self {
+		time.Sleep(50 * time.Millisecond)
+	}
 	err := c.stableProposeStream.Send(req.ToProposePb(model.STABLE_PROP))
 	if err != nil {
 		slog.Error(err)
@@ -77,7 +83,9 @@ func (c *grpcClient) sendStablePropose(req *model.Request) {
 }
 
 func (c *grpcClient) sendRetryPropose(req *model.Request) {
-	time.Sleep(50 * time.Millisecond)
+	if !c.self {
+		time.Sleep(50 * time.Millisecond)
+	}
 	err := c.retryProposeStream.Send(req.ToProposePb(model.RETRY_PROP))
 	if err != nil {
 		slog.Error(err)
