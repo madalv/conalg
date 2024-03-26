@@ -48,14 +48,13 @@ func (c *Caesar) FastPropose(reqID string) {
 			req.Pred = pred
 			c.History.Set(req.ID, req)
 			slog.Infof("REPLIES have NACK. must RETRY.  req %s %s", req.Payload, req.ID)
-
-			// TODO retry
+			go c.RetryPropose(req)
 			return
 		} else if len(replies) == c.Cfg.FastQuorum {
 			req.Timestamp = maxTimestamp
 			req.Pred = pred
 			c.History.Set(req.ID, req)
-			slog.Infof("FQ REACHED ----- %s %s", req.Payload,  req.ID)
+			slog.Infof("FQ REACHED ----- %s %s", req.Payload, req.ID)
 			c.StablePropose(req)
 			return
 		} else if len(replies) == c.Cfg.ClassicQuorum {
@@ -65,7 +64,6 @@ func (c *Caesar) FastPropose(reqID string) {
 			// TODO send slow propose
 			slog.Infof("CQ REACHED ----- %s %s", req.Payload, req.ID)
 			return
-
 		}
 	}
 }

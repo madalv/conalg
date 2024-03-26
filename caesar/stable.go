@@ -15,7 +15,7 @@ func (c *Caesar) StablePropose(req model.Request) {
 }
 
 func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
-	time.Sleep(5 * time.Second)
+	// time.Sleep(5 * time.Second)
 	slog.Debugf("Received stable propose for %s %s: %+v", sp.ID, sp.Payload, sp)
 	c.Ballots.Set(sp.ID, sp.Ballot)
 	var req model.Request
@@ -55,12 +55,13 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	}
 
 	ch := c.Publisher.Subscribe()
-	defer c.Publisher.CancelSubscription(ch)
 
 	for update := range ch {
-		if update.Status == model.DECIDED && req.Pred.Contains(update.RequestID) {
+		if req.Pred.Contains(update.RequestID) {
+			c.breakLoop(req.ID)
 			if c.deliverable(req.ID) {
 				c.deliver(req)
+				c.Publisher.CancelSubscription(ch)
 				return nil
 			}
 		}
@@ -90,6 +91,7 @@ func (c *Caesar) deliver(req model.Request) {
 }
 
 func (c *Caesar) breakLoop(id string) error {
+	slog.Debugf("Breaking loop for %s", id)
 	req, ok := c.History.Get(id)
 	if !ok {
 		slog.Errorf("Couldn't retrieve key %s", id)
@@ -132,7 +134,7 @@ func (c *Caesar) deliverable(id string) bool {
 	}
 	res := req.Pred.IsSubset(c.Decided)
 	if !res {
-		slog.Warnf(req.Pred.Difference(c.Decided).String())
+		slog.Errorf(req.Pred.Difference(c.Decided).String())
 	}
 	slog.Debugf("Request %s %s is deliverable: %t", id, req.Payload, res)
 	return res
