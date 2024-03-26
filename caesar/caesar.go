@@ -155,20 +155,23 @@ func (c *Caesar) wait(id string, payload []byte, timestamp uint64) bool {
 	defer c.Publisher.CancelSubscription(ch)
 
 	for update := range ch {
-		if waitlist.Contains(update.RequestID) {
-			if update.Status == model.STABLE || update.Status == model.ACC {
-				if !update.Pred.Contains(id) {
-					slog.Warnf("Request %s %s is DONE WAITING", id, payload)
-					return false
-				} else {
-					waitlist.Remove(update.RequestID)
-				}
-			}
+		if !waitlist.Contains(update.RequestID) {
+			continue
+		}
 
-			if waitlist.IsEmpty() {
-				slog.Warnf("Request %s %s is DONE WAITING", id, payload)
-				return true
+		if update.Status == model.DECIDED || update.Status == model.STABLE {
+
+			if !update.Pred.Contains(id) {
+				slog.Warnf("Request %s %s is DONE WAITING - false outcome", id, payload)
+				return false
+			} else {
+				waitlist.Remove(update.RequestID)
 			}
+		}
+
+		if waitlist.IsEmpty() {
+			slog.Warnf("Request %s %s is DONE WAITING - true outcome", id, payload)
+			return true
 		}
 	}
 	return false

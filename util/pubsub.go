@@ -2,6 +2,8 @@ package util
 
 import (
 	"context"
+
+	"github.com/gookit/slog"
 )
 
 type Publisher[T any] interface {
@@ -18,7 +20,7 @@ type broadcastServer[T any] struct {
 }
 
 func (s *broadcastServer[T]) Subscribe() <-chan T {
-	newListener := make(chan T)
+	newListener := make(chan T, 1)
 	s.addListener <- newListener
 	return newListener
 }
@@ -72,12 +74,9 @@ func (s *broadcastServer[T]) serve(ctx context.Context) {
 			}
 			for _, listener := range s.listeners {
 				if listener != nil {
-					select {
-					case listener <- val:
-					case <-ctx.Done():
-						return
-					}
-
+					listener <- val
+				} else {
+					slog.Error("Listener is nil")
 				}
 			}
 		}

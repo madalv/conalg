@@ -31,6 +31,16 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	req.StableTime = time.Now()
 	c.History.Set(req.ID, req)
 
+	update := model.StatusUpdate{
+		RequestID: req.ID,
+		Status:    model.STABLE,
+		Pred:      req.Pred,
+	}
+
+	c.Publisher.Publish(update)
+
+	slog.Warnf("Published status update for %v", update)
+
 	// break loop
 	err := c.breakLoop(req.ID) // TODO add count for tries so it doesn't loop forever
 	for err != nil {
@@ -48,7 +58,7 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	defer c.Publisher.CancelSubscription(ch)
 
 	for update := range ch {
-		if update.Status == model.ACC && req.Pred.Contains(update.RequestID) {
+		if update.Status == model.DECIDED && req.Pred.Contains(update.RequestID) {
 			if c.deliverable(req.ID) {
 				c.deliver(req)
 				return nil
@@ -61,11 +71,15 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 
 func (c *Caesar) deliver(req model.Request) {
 	c.Decided.Add(req.ID)
-	c.Publisher.Publish(model.StatusUpdate{
+	update := model.StatusUpdate{
 		RequestID: req.ID,
-		Status:    model.ACC,
+		Status:    model.DECIDED,
 		Pred:      req.Pred,
-	})
+	}
+	c.Publisher.Publish(update)
+
+	slog.Warnf("Published status update for %v", update)
+
 	c.Executer.Execute(req.Payload)
 	c.History.Remove(req.ID)
 	slog.Debugf("Request %s %s delivered", req.Payload, req.ID)
