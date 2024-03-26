@@ -15,7 +15,7 @@ func (c *Caesar) StablePropose(req model.Request) {
 }
 
 func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
-	// time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 	slog.Debugf("Received stable propose for %s %s: %+v", sp.ID, sp.Payload, sp)
 	c.Ballots.Set(sp.ID, sp.Ballot)
 	var req model.Request
