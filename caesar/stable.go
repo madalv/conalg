@@ -3,9 +3,9 @@ package caesar
 import (
 	"conalg/model"
 	"errors"
-	"fmt"
 	"time"
 
+	gs "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/slog"
 )
 
@@ -42,26 +42,26 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	slog.Warnf("Published status update for %v", update)
 
 	// break loop
-	err := c.breakLoop(req.ID) // TODO add count for tries so it doesn't loop forever
+	err := c.breakLoop(req.ID)
 	for err != nil {
-		time.Sleep(10 * time.Second)
 		slog.Error(err)
-		err = c.breakLoop(req.ID)
 	}
 
 	if c.deliverable(req.ID) {
-		c.deliver(req)
+		c.deliver(req.ID)
 		return nil
 	}
 
 	ch := c.Publisher.Subscribe()
 
 	for update := range ch {
-		if req.Pred.Contains(update.RequestID) {
+		if req.Pred.Contains(update.RequestID) ||
+			update.Status == "PRED_REMOVAL" || update.Status == "STABLE" || update.Status == "DECIDED" {
+			slog.Infof("----> Received update %v for %s", update, req.ID)
 			c.breakLoop(req.ID)
 			if c.deliverable(req.ID) {
-				c.deliver(req)
-				c.Publisher.CancelSubscription(ch)
+				c.deliver(req.ID)
+				// c.Publisher.CancelSubscription(ch)
 				return nil
 			}
 		}
@@ -70,8 +70,13 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	return nil
 }
 
-func (c *Caesar) deliver(req model.Request) {
+func (c *Caesar) deliver(id string) {
+
+	req, _ := c.History.Get(id)
+	// c.decidedMu.Lock()
 	c.Decided.Add(req.ID)
+	// c.decidedMu.Unlock()
+
 	update := model.StatusUpdate{
 		RequestID: req.ID,
 		Status:    model.DECIDED,
@@ -83,10 +88,8 @@ func (c *Caesar) deliver(req model.Request) {
 	c.Executer.Execute(req.Payload)
 	c.History.Remove(req.ID)
 	slog.Debugf("Request %s %s delivered", req.Payload, req.ID)
-	// slog.Debug(req.Proposer)
-	if req.Proposer == fmt.Sprintf("NODE_%d", c.Cfg.ID) {
-		c.Analyzer.SendReq(req)
-	}
+
+	c.Analyzer.SendReq(req)
 }
 
 func (c *Caesar) breakLoop(id string) error {
@@ -97,44 +100,67 @@ func (c *Caesar) breakLoop(id string) error {
 		return errors.New("request not found")
 	}
 
-	if req.Status != model.STABLE {
-		slog.Errorf("Request %s is not stable", id)
-		return errors.New("request not stable")
-	}
-
 	iterator := req.Pred.Iter()
 	for predID := range iterator {
+		slog.Infof("Checking pred %s (%s)", predID, req.ID)
 		pred, ok := c.History.Get(predID)
+		// c.decidedMu.RLock()
 		if !ok && c.Decided.Contains(predID) {
+			slog.Infof("Request %s has a decided pred %s", id, predID)
 			continue
 		} else if !ok {
 			slog.Errorf("Couldn't retrieve key %s", id)
-			return errors.New("request not found")
+			continue
 		}
+		// c.decidedMu.RUnlock()
 
 		if pred.Status == model.STABLE {
-			if pred.Timestamp < req.Timestamp {
+
+			if pred.Timestamp < req.Timestamp && pred.Pred.Contains(id) {
+				slog.Infof("-> Current request %s has a pred %s with lower timestamp %d", id, predID, pred.Timestamp)
 				pred.Pred.Remove(id)
+
 				c.History.Set(pred.ID, pred)
-			} else if pred.Timestamp > req.Timestamp {
+
+				slog.Infof("Removed %s from %s's pred", id, pred.ID)
+				c.Publisher.Publish(model.StatusUpdate{
+					RequestID: pred.ID,
+					Status:    "PRED_REMOVAL",
+				})
+				slog.Warn("Published pred removal for", predID)
+
+			} else if pred.Timestamp >= req.Timestamp {
+				slog.Infof("-> Current request %s has a pred %s with higher timestamp %d", id, predID, pred.Timestamp)
 				req.Pred.Remove(predID)
+				slog.Infof("Removed %s from %s's pred", predID, id)
 			}
 		}
 	}
+	slog.Infof("Finished breaking loop for %s", id)
+
 	c.History.Set(req.ID, req)
+
+	slog.Infof("History set for", id)
 	return nil
 }
 
 func (c *Caesar) deliverable(id string) bool {
+	slog.Infof("Checking if %s is deliverable", id)
 	req, ok := c.History.Get(id)
 	if !ok {
 		slog.Errorf("Couldn't retrieve key %s", id)
 		return false
 	}
-	res := req.Pred.IsSubset(c.Decided)
+
+	pred := gs.NewSet[string](req.Pred.ToSlice()...)
+
+	// c.decidedMu.RLock()
+	res := pred.IsSubset(c.Decided)
 	if !res {
-		slog.Errorf(req.Pred.Difference(c.Decided).String())
+		slog.Errorf(pred.Difference(c.Decided).String())
 	}
+
+	// c.decidedMu.RUnlock()
 	slog.Debugf("Request %s %s is deliverable: %t", id, req.Payload, res)
 	return res
 }

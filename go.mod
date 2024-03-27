@@ -8,6 +8,7 @@ require (
 	github.com/golang/protobuf v1.5.3
 	github.com/google/uuid v1.6.0
 	github.com/gookit/slog v0.5.4
+	github.com/joho/godotenv v1.5.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.60.1

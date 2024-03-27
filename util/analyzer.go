@@ -22,7 +22,7 @@ type Analyzer struct {
 func NewAnalyzer() *Analyzer {
 
 	a := &Analyzer{
-		reqChannel: make(chan model.Request, 100),
+		reqChannel: make(chan model.Request),
 		timestamps: make(map[string]uint64),
 	}
 
@@ -73,6 +73,6 @@ func (a *Analyzer) processRequest(req model.Request) {
 	a.avgDeliveryDuration = float64(a.totalDeliveryDuration / a.nrRequests)
 	a.avgProposalDuration = float64(a.totalProposalDuration / a.nrRequests)
 
-	slog.Infof("Request %s took %d ms stable->delivered, %d ms proposed->stable and %d ms in total. Timestamps: %d, last for payload %s: %d", 
-	req.ID, deliveryDuration.Milliseconds(), proposalDuration.Milliseconds(), totalDuration.Milliseconds(), req.Timestamp, string(req.Payload), lastTs)
+	slog.Infof("Request %s took %d ms stable->delivered, %d ms proposed->stable and %d ms in total. Timestamps: %d, last for payload %s: %d",
+		req.ID, deliveryDuration.Milliseconds(), proposalDuration.Milliseconds(), totalDuration.Milliseconds(), req.Timestamp, string(req.Payload), lastTs)
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gookit/slog"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -18,7 +19,7 @@ type Config struct {
 }
 
 func NewConfig() Config {
-	// err := godotenv.Load()
+	err := godotenv.Load()
 
 	port := os.Getenv("PORT")
 	nodes := os.Getenv("NODES")

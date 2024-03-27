@@ -54,7 +54,7 @@ func main() {
 
 	startTime := time.Now()
 	timeout := 30 * time.Second
-	commandNr := 50
+	commandNr := 100
 	wg := sync.WaitGroup{}
 
 	for i := 1; i <= commandNr; i++ {

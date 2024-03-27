@@ -6,6 +6,7 @@ import (
 	"conalg/util"
 	"context"
 	"errors"
+	"sync"
 
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/slog"
@@ -33,6 +34,7 @@ type Caesar struct {
 	Publisher util.Publisher[model.StatusUpdate]
 	Decided   gs.Set[string]
 	Analyzer  *util.Analyzer
+	decidedMu    sync.RWMutex
 }
 
 func NewCaesar(Cfg config.Config, transport Transport, app Application) *Caesar {
@@ -49,7 +51,8 @@ func NewCaesar(Cfg config.Config, transport Transport, app Application) *Caesar 
 		Publisher: util.NewBroadcastServer[model.StatusUpdate](
 			context.Background(),
 			make(chan model.StatusUpdate)),
-		Analyzer: util.NewAnalyzer(),
+		Analyzer:      util.NewAnalyzer(),
+		decidedMu: sync.RWMutex{},
 	}
 }
 
@@ -63,7 +66,7 @@ func (c *Caesar) Propose(payload []byte) {
 // computePred computes the predecessor set for a request
 func (c *Caesar) computePred(reqID string, payload []byte, timestamp uint64, whitelist gs.Set[string]) (pred gs.Set[string]) {
 	// slog.Debug("Computing PRED: ", reqID, payload, timestamp, whitelist)
-	pred = gs.NewSet[string]()
+	pred = gs.NewThreadUnsafeSet[string]()
 
 	if whitelist == nil {
 		whitelist = gs.NewSet[string]()

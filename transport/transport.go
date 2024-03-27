@@ -34,9 +34,9 @@ func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
 
 	module := &grpcTransport{
 		clients:           []*grpcClient{},
-		fastProposeChan:   make(chan *model.Request, 50),
-		stableProposeChan: make(chan *model.Request, 50),
-		retryProposeChan:  make(chan *model.Request, 50),
+		fastProposeChan:   make(chan *model.Request),
+		stableProposeChan: make(chan *model.Request),
+		retryProposeChan:  make(chan *model.Request),
 		cfg:               cfg,
 	}
 

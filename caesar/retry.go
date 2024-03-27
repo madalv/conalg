@@ -12,7 +12,7 @@ func (c *Caesar) RetryPropose(req model.Request) {
 	c.Transport.BroadcastRetryPropose(&req)
 
 	replies := map[string]model.Response{}
-	pred := gs.NewSet[string]()
+	pred := gs.NewThreadUnsafeSet[string]()
 
 	for reply := range req.ResponseChan {
 		slog.Debugf("Received %+v for req %s /%s ", reply, req.Payload, req.ID)
