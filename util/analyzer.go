@@ -8,6 +8,7 @@ import (
 )
 
 type Analyzer struct {
+	active                  bool
 	reqChannel              chan model.Request
 	nrRequests              int64
 	timestamps              map[string]uint64
@@ -19,7 +20,7 @@ type Analyzer struct {
 	totalProcessingDuration int64
 }
 
-func NewAnalyzer() *Analyzer {
+func NewAnalyzer(active bool) *Analyzer {
 
 	a := &Analyzer{
 		reqChannel: make(chan model.Request),
@@ -34,14 +35,17 @@ func NewAnalyzer() *Analyzer {
 
 	ticker := time.NewTicker(10 * time.Second)
 
-	go func() {
-		for range ticker.C {
-			slog.Infof("> Average total duration: %f ms", a.avgTotalDuration)
-			slog.Infof("> Average delivery duration: %f ms", a.avgDeliveryDuration)
-			slog.Infof("> Average proposal duration: %f ms", a.avgProposalDuration)
-			slog.Infof("> Number of requests processed: %d", a.nrRequests)
-		}
-	}()
+	if active {
+		go func() {
+			for range ticker.C {
+				slog.Infof("> Average total duration: %f ms", a.avgTotalDuration)
+				slog.Infof("> Average delivery duration: %f ms", a.avgDeliveryDuration)
+				slog.Infof("> Average proposal duration: %f ms", a.avgProposalDuration)
+				slog.Infof("> Number of requests processed: %d", a.nrRequests)
+			}
+		}()
+	}
+
 	return a
 }
 

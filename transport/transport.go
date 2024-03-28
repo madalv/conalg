@@ -4,6 +4,7 @@ import (
 	"conalg/config"
 	"conalg/model"
 	"net"
+	"sync"
 
 	"github.com/gookit/slog"
 )
@@ -27,6 +28,7 @@ type grpcTransport struct {
 	retryProposeChan  chan *model.Request
 	cfg               config.Config
 	receiver          Receiver
+	mu                sync.Mutex
 }
 
 func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
@@ -38,6 +40,7 @@ func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
 		stableProposeChan: make(chan *model.Request),
 		retryProposeChan:  make(chan *model.Request),
 		cfg:               cfg,
+		mu:                sync.Mutex{},
 	}
 
 	go module.ListenFastProposeChan()
@@ -53,25 +56,31 @@ func (t *grpcTransport) SetReceiver(r Receiver) {
 
 func (t *grpcTransport) ListenFastProposeChan() {
 	for req := range t.fastProposeChan {
+		t.mu.Lock()
 		for _, client := range t.clients {
 			go client.sendFastPropose(req)
 		}
+		t.mu.Unlock()
 	}
 }
 
 func (t *grpcTransport) ListenRetryProposeChan() {
 	for req := range t.retryProposeChan {
+		t.mu.Lock()
 		for _, client := range t.clients {
 			go client.sendRetryPropose(req)
 		}
+		t.mu.Unlock()
 	}
 }
 
 func (t *grpcTransport) ListenStableProposeChan() {
 	for req := range t.stableProposeChan {
+		t.mu.Lock()
 		for _, client := range t.clients {
 			go client.sendStablePropose(req)
 		}
+		t.mu.Unlock()
 	}
 }
 
@@ -120,6 +129,8 @@ func (t *grpcTransport) ConnectToNodes() error {
 
 	clients = append(clients, c)
 
+	t.mu.Lock()
 	t.clients = clients
+	t.mu.Unlock()
 	return nil
 }

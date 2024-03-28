@@ -31,7 +31,7 @@ func (s *SampleApp) SetConalgModule(m Conalg) {
 
 func TestComputePred_EmptyWhitelist(t *testing.T) {
 	app := &SampleApp{}
-	caesar := NewCaesar(config.Config{}, nil, app)
+	caesar := NewCaesar(config.Config{}, nil, app, false)
 	app.SetConalgModule(caesar)
 
 	// Define test inputs
@@ -60,7 +60,7 @@ func TestComputePred_EmptyWhitelist(t *testing.T) {
 
 func TestComputePred_NilWhitelist(t *testing.T) {
 	app := &SampleApp{}
-	caesar := NewCaesar(config.Config{}, nil, app)
+	caesar := NewCaesar(config.Config{}, nil, app, false)
 	app.SetConalgModule(caesar)
 
 	// Define test inputs
@@ -88,7 +88,7 @@ func TestComputePred_NilWhitelist(t *testing.T) {
 
 func TestComputePred_WithWhitelist(t *testing.T) {
 	app := &SampleApp{}
-	caesar := NewCaesar(config.Config{}, nil, app)
+	caesar := NewCaesar(config.Config{}, nil, app, false)
 	app.SetConalgModule(caesar)
 
 	// Define test inputs
@@ -121,7 +121,7 @@ func TestComputePred_WithWhitelist(t *testing.T) {
 }
 func TestComputeWaitlist_NoError(t *testing.T) {
 	app := &SampleApp{}
-	caesar := NewCaesar(config.Config{}, nil, app)
+	caesar := NewCaesar(config.Config{}, nil, app, false)
 	app.SetConalgModule(caesar)
 
 	// Define test inputs
@@ -151,7 +151,7 @@ func TestComputeWaitlist_NoError(t *testing.T) {
 
 func TestComputeWaitlist_ErrorAutoNack(t *testing.T) {
 	app := &SampleApp{}
-	caesar := NewCaesar(config.Config{}, nil, app)
+	caesar := NewCaesar(config.Config{}, nil, app, false)
 	app.SetConalgModule(caesar)
 
 	// Define test inputs
@@ -178,7 +178,7 @@ func TestComputeWaitlist_ErrorAutoNack(t *testing.T) {
 }
 func TestWait_Succesful(t *testing.T) {
 	app := &SampleApp{}
-	caesar := NewCaesar(config.Config{}, nil, app)
+	caesar := NewCaesar(config.Config{}, nil, app, false)
 	app.SetConalgModule(caesar)
 
 	// Define test inputs
@@ -208,7 +208,7 @@ func TestWait_Succesful(t *testing.T) {
 
 func TestWait_Unsuccessful(t *testing.T) {
 	app := &SampleApp{}
-	caesar := NewCaesar(config.Config{}, nil, app)
+	caesar := NewCaesar(config.Config{}, nil, app, false)
 	app.SetConalgModule(caesar)
 
 	// Define test inputs

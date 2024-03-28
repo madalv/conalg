@@ -8,22 +8,22 @@ import (
 )
 
 func (c *Caesar) RetryPropose(req model.Request) {
-	slog.Infof("Retrying %s %s", req.Payload, req.ID)
+	slog.Debugf("Retrying %s %s", req.Payload, req.ID)
 	c.Transport.BroadcastRetryPropose(&req)
 
 	replies := map[string]model.Response{}
 	pred := gs.NewThreadUnsafeSet[string]()
 
 	for reply := range req.ResponseChan {
-		slog.Debugf("Received %+v for req %s /%s ", reply, req.Payload, req.ID)
 
 		if reply.Type != model.RETRY_REPLY {
-			slog.Warnf("Received unexpected reply %+v for req %s /%s ", reply, req.Payload, req.ID)
 			continue
 		}
 
+		slog.Debugf("Received %+v for %s  ", reply, req.ID)
+
 		if _, ok := replies[reply.From]; ok {
-			slog.Warnf("Received duplicate reply %+v for req %s /%s ", reply, req.Payload, req.ID)
+			slog.Warnf("Received duplicate reply %+v for %s %s ", reply, req.Payload, req.ID)
 		} else {
 			replies[reply.From] = reply
 		}
@@ -33,7 +33,7 @@ func (c *Caesar) RetryPropose(req model.Request) {
 		}
 
 		if len(replies) == c.Cfg.ClassicQuorum {
-			slog.Infof("CQ REACHED (retry successful) ----- %s /%s", req.Payload, req.ID)
+			slog.Debugf("----- CQ REACHED (retry successful) ----- %s for %s", req.Payload, req.ID)
 			c.StablePropose(req)
 			return
 		}
@@ -58,11 +58,11 @@ func (c *Caesar) ReceiveRetryPropose(rp model.Request) model.Response {
 	update := model.StatusUpdate{
 		RequestID: req.ID,
 		Status:    model.ACC,
-		Pred:      req.Pred,
+		Pred:      gs.NewThreadUnsafeSet[string](req.Pred.ToSlice()...),
 	}
 	c.Publisher.Publish(update)
 
-	slog.Warnf("Published status update for %v", update)
+	slog.Debugf("-----------------> Published status update for %s %s %s", update.RequestID, update.Status, update.Pred.String())
 
 	newPred := c.computePred(req.ID, req.Payload, req.Timestamp, nil)
 	for p := range req.Pred.Iter() {

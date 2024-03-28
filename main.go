@@ -9,7 +9,6 @@ import (
 )
 
 
-// TODO move this bs somewhere else
 type SampleApp struct {
 	conalg caesar.Conalg
 }
@@ -19,7 +18,6 @@ func (s *SampleApp) DetermineConflict(c1, c2 []byte) bool {
 }
 
 func (s *SampleApp) Execute(c []byte) {
-	slog.Infof(" -------- ALERT! ... doing whatever i want with %s", c)
 }
 
 func (s *SampleApp) SetConalgModule(m caesar.Conalg) {
@@ -27,14 +25,8 @@ func (s *SampleApp) SetConalgModule(m caesar.Conalg) {
 }
 
 func main() {
-
-	slog.Configure(func(logger *slog.SugaredLogger) {
-		f := logger.Formatter.(*slog.TextFormatter)
-		f.EnableColor = true
-	})
-
 	app := SampleApp{}
-	conalg := caesar.InitConalgModule(&app)
+	conalg := caesar.InitConalgModule(&app, "", slog.InfoLevel, false)
 	app.SetConalgModule(conalg)
 
 	gin.SetMode(gin.ReleaseMode)

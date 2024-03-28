@@ -17,9 +17,16 @@ type Application interface {
 	Execute(c []byte)
 }
 
-// TODO add env path as param
-func InitConalgModule(executer Application) Conalg {
-	cfg := config.NewConfig()
+func InitConalgModule(executer Application, envpath string, lvl slog.Level, analyzerOn bool) Conalg {
+
+	slog.Configure(func(logger *slog.SugaredLogger) {
+		f := logger.Formatter.(*slog.TextFormatter)
+		f.EnableColor = true
+	})
+
+	slog.SetLogLevel(lvl)
+
+	cfg := config.NewConfig(envpath)
 	slog.Debug(cfg)
 
 	transport, err := transport.NewGRPCTransport(cfg)
@@ -27,7 +34,7 @@ func InitConalgModule(executer Application) Conalg {
 		slog.Fatal(err)
 	}
 
-	caesarModule := NewCaesar(cfg, transport, executer)
+	caesarModule := NewCaesar(cfg, transport, executer, analyzerOn)
 
 	transport.SetReceiver(caesarModule)
 

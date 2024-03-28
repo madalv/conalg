@@ -10,7 +10,7 @@ import (
 )
 
 func (c *Caesar) StablePropose(req model.Request) {
-	slog.Infof("Stable Proposing %s %s", req.Payload, req.ID)
+	slog.Debugf("Stable Proposing %s", req.ID)
 	c.Transport.BroadcastStablePropose(&req)
 }
 
@@ -34,12 +34,12 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	update := model.StatusUpdate{
 		RequestID: req.ID,
 		Status:    model.STABLE,
-		Pred:      req.Pred,
+		Pred:      gs.NewThreadUnsafeSet[string](req.Pred.ToSlice()...),
 	}
 
 	c.Publisher.Publish(update)
 
-	slog.Warnf("Published status update for %v", update)
+	slog.Debugf("-----------------> Published status update for %s %s %s", update.RequestID, update.Status, update.Pred.String())
 
 	// break loop
 	err := c.breakLoop(req.ID)
@@ -56,8 +56,8 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 
 	for update := range ch {
 		if req.Pred.Contains(update.RequestID) ||
-			update.Status == "PRED_REMOVAL" || update.Status == "STABLE" || update.Status == "DECIDED" {
-			slog.Infof("----> Received update %v for %s", update, req.ID)
+			update.Status == "PRED_REMOVAL" || update.Status == "DECIDED" {
+			slog.Debugf("----> Received update for %s: %v", req.ID, update)
 			c.breakLoop(req.ID)
 			if c.deliverable(req.ID) {
 				c.deliver(req.ID)
@@ -73,27 +73,27 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 func (c *Caesar) deliver(id string) {
 
 	req, _ := c.History.Get(id)
-	// c.decidedMu.Lock()
 	c.Decided.Add(req.ID)
-	// c.decidedMu.Unlock()
 
 	update := model.StatusUpdate{
 		RequestID: req.ID,
 		Status:    model.DECIDED,
-		Pred:      req.Pred,
+		Pred:      gs.NewThreadUnsafeSet[string](req.Pred.ToSlice()...),
 	}
 	c.Publisher.Publish(update)
 
-	slog.Warnf("Published status update for %v", update)
+	slog.Debugf("-----------------> Published status update for %s %s %s", update.RequestID, update.Status, update.Pred.String())
 	c.Executer.Execute(req.Payload)
 	c.History.Remove(req.ID)
 	slog.Debugf("Request %s %s delivered", req.Payload, req.ID)
 
-	c.Analyzer.SendReq(req)
+	if c.AnalyzerEnabled {
+		c.Analyzer.SendReq(req)
+	}
 }
 
 func (c *Caesar) breakLoop(id string) error {
-	slog.Debugf("Breaking loop for %s", id)
+	// slog.Infof("Breaking loop for %s", id)
 	req, ok := c.History.Get(id)
 	if !ok {
 		slog.Errorf("Couldn't retrieve key %s", id)
@@ -101,51 +101,48 @@ func (c *Caesar) breakLoop(id string) error {
 	}
 
 	iterator := req.Pred.Iter()
+	newPredSet := gs.NewThreadUnsafeSet[string](req.Pred.ToSlice()...)
 	for predID := range iterator {
-		slog.Infof("Checking pred %s (%s)", predID, req.ID)
 		pred, ok := c.History.Get(predID)
-		// c.decidedMu.RLock()
+
 		if !ok && c.Decided.Contains(predID) {
-			slog.Infof("Request %s has a decided pred %s", id, predID)
 			continue
 		} else if !ok {
 			slog.Errorf("Couldn't retrieve key %s", id)
 			continue
 		}
-		// c.decidedMu.RUnlock()
 
 		if pred.Status == model.STABLE {
 
 			if pred.Timestamp < req.Timestamp && pred.Pred.Contains(id) {
-				slog.Infof("-> Current request %s has a pred %s with lower timestamp %d", id, predID, pred.Timestamp)
+				// slog.Infof("-> Pred %s (TS %d) contains current request %s (TS %d)", predID, pred.Timestamp, req.ID, req.Timestamp)
 				pred.Pred.Remove(id)
 
 				c.History.Set(pred.ID, pred)
 
-				slog.Infof("Removed %s from %s's pred", id, pred.ID)
-				c.Publisher.Publish(model.StatusUpdate{
+				// slog.Infof("-> Removed %s from %s's pred", id, pred.ID)
+				update := model.StatusUpdate{
 					RequestID: pred.ID,
 					Status:    "PRED_REMOVAL",
-				})
-				slog.Warn("Published pred removal for", predID)
+				}
+
+				c.Publisher.Publish(update)
+				// slog.Infof("-----------------> Published status update for %s %s", update.RequestID, update.Status)
 
 			} else if pred.Timestamp >= req.Timestamp {
-				slog.Infof("-> Current request %s has a pred %s with higher timestamp %d", id, predID, pred.Timestamp)
-				req.Pred.Remove(predID)
-				slog.Infof("Removed %s from %s's pred", predID, id)
+				// slog.Infof("-> Current request %s has a pred %s with higher timestamp %d", id, predID, pred.Timestamp)
+				newPredSet.Remove(predID)
+				// slog.Infof("-> Removed %s from %s's pred", predID, id)
 			}
 		}
 	}
-	slog.Infof("Finished breaking loop for %s", id)
 
+	req.Pred = newPredSet
 	c.History.Set(req.ID, req)
-
-	slog.Infof("History set for", id)
 	return nil
 }
 
 func (c *Caesar) deliverable(id string) bool {
-	slog.Infof("Checking if %s is deliverable", id)
 	req, ok := c.History.Get(id)
 	if !ok {
 		slog.Errorf("Couldn't retrieve key %s", id)
@@ -154,13 +151,12 @@ func (c *Caesar) deliverable(id string) bool {
 
 	pred := gs.NewSet[string](req.Pred.ToSlice()...)
 
-	// c.decidedMu.RLock()
 	res := pred.IsSubset(c.Decided)
 	if !res {
-		slog.Errorf(pred.Difference(c.Decided).String())
+		slog.Debugf("---> Request for %s not deliverable: %s", id, pred.Difference(c.Decided).String())
+	} else {
+		slog.Debugf("---> Request for %s deliverable", id)
 	}
 
-	// c.decidedMu.RUnlock()
-	slog.Debugf("Request %s %s is deliverable: %t", id, req.Payload, res)
 	return res
 }

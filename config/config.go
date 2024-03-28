@@ -18,8 +18,12 @@ type Config struct {
 	ID            uint64
 }
 
-func NewConfig() Config {
-	err := godotenv.Load()
+func NewConfig(envpath string) Config {
+	if envpath != "" {
+		if err := godotenv.Load(envpath); err != nil {
+			slog.Fatal(err)
+		}
+	}
 
 	port := os.Getenv("PORT")
 	nodes := os.Getenv("NODES")
