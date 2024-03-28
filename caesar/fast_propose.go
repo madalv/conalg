@@ -17,7 +17,7 @@ func (c *Caesar) FastPropose(reqID string) {
 	}
 	replies := map[string]model.Response{}
 	maxTimestamp := req.Timestamp
-	pred := gs.NewThreadUnsafeSet[string]()
+	pred := gs.NewSet[string]()
 
 	c.Transport.BroadcastFastPropose(&req)
 	broadcastTime := time.Now()

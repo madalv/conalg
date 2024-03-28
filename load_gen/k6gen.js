@@ -25,15 +25,15 @@ function chooseName(probOfConflict) {
 }
 
 export const options = {
-  stages: [
-    { duration: '15s', target: 10 },  // Ramp up to 50 VUs over 30 seconds
-    //{ duration: '30s', target: 100 }, // Ramp up to 100 VUs over next 30 seconds
-    //{ duration: '30s', target: 60 }, // Ramp up to 150 VUs over next 30 seconds
-    //{ duration: '30s', target: 200 }, // Ramp up to 200 VUs over next 30 seconds/
-    // { duration: '30s', target: 100 }, // Ramp down to 100 VUs over next 30 seconds
-    // { duration: '30s', target: 50 },  // Ramp down to 50 VUs over next 30 seconds
-    // { duration: '30s', target: 0 },   // Ramp down to 0 VUs over next 30 seconds
-  ],
+  scenarios: {
+    constant_request_rate: {
+      executor: 'constant-arrival-rate',
+      rate: 100,
+      timeUnit: '1s',
+      duration: '40s',
+      preAllocatedVUs: 1,
+    },
+  },
 };
 
 export default function () {

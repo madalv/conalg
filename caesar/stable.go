@@ -34,7 +34,7 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	update := model.StatusUpdate{
 		RequestID: req.ID,
 		Status:    model.STABLE,
-		Pred:      gs.NewThreadUnsafeSet[string](req.Pred.ToSlice()...),
+		Pred:      gs.NewSet[string](req.Pred.ToSlice()...),
 	}
 
 	c.Publisher.Publish(update)
@@ -78,7 +78,7 @@ func (c *Caesar) deliver(id string) {
 	update := model.StatusUpdate{
 		RequestID: req.ID,
 		Status:    model.DECIDED,
-		Pred:      gs.NewThreadUnsafeSet[string](req.Pred.ToSlice()...),
+		Pred:      gs.NewSet[string](req.Pred.ToSlice()...),
 	}
 	c.Publisher.Publish(update)
 
@@ -101,7 +101,7 @@ func (c *Caesar) breakLoop(id string) error {
 	}
 
 	iterator := req.Pred.Iter()
-	newPredSet := gs.NewThreadUnsafeSet[string](req.Pred.ToSlice()...)
+	newPredSet := gs.NewSet[string](req.Pred.ToSlice()...)
 	for predID := range iterator {
 		pred, ok := c.History.Get(predID)
 
@@ -153,7 +153,7 @@ func (c *Caesar) deliverable(id string) bool {
 
 	res := pred.IsSubset(c.Decided)
 	if !res {
-		slog.Debugf("---> Request for %s not deliverable: %s", id, pred.Difference(c.Decided).String())
+		slog.Warnf("---> Request for %s not deliverable: %s", id, pred.Difference(c.Decided).String())
 	} else {
 		slog.Debugf("---> Request for %s deliverable", id)
 	}

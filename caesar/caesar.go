@@ -65,7 +65,7 @@ func (c *Caesar) Propose(payload []byte) {
 // computePred computes the predecessor set for a request
 func (c *Caesar) computePred(reqID string, payload []byte, timestamp uint64, whitelist gs.Set[string]) (pred gs.Set[string]) {
 	// slog.Debug("Computing PRED: ", reqID, payload, timestamp, whitelist)
-	pred = gs.NewThreadUnsafeSet[string]()
+	pred = gs.NewSet[string]()
 
 	if whitelist == nil {
 		whitelist = gs.NewSet[string]()

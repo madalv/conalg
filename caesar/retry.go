@@ -12,7 +12,7 @@ func (c *Caesar) RetryPropose(req model.Request) {
 	c.Transport.BroadcastRetryPropose(&req)
 
 	replies := map[string]model.Response{}
-	pred := gs.NewThreadUnsafeSet[string]()
+	pred := gs.NewSet[string]()
 
 	for reply := range req.ResponseChan {
 
@@ -58,7 +58,7 @@ func (c *Caesar) ReceiveRetryPropose(rp model.Request) model.Response {
 	update := model.StatusUpdate{
 		RequestID: req.ID,
 		Status:    model.ACC,
-		Pred:      gs.NewThreadUnsafeSet[string](req.Pred.ToSlice()...),
+		Pred:      gs.NewSet[string](req.Pred.ToSlice()...),
 	}
 	c.Publisher.Publish(update)
 

@@ -26,7 +26,7 @@ func (s *SampleApp) SetConalgModule(m caesar.Conalg) {
 
 func main() {
 	app := SampleApp{}
-	conalg := caesar.InitConalgModule(&app, "", slog.InfoLevel, false)
+	conalg := caesar.InitConalgModule(&app, "", slog.InfoLevel, true)
 	app.SetConalgModule(conalg)
 
 	gin.SetMode(gin.ReleaseMode)

@@ -48,7 +48,7 @@ func NewRequest(payload []byte, ts uint64, fq int, proposer uint64) Request {
 		ID:           uuid.NewString(),
 		Payload:      payload,
 		Timestamp:    ts,
-		Pred:         gs.NewThreadUnsafeSet[string](),
+		Pred:         gs.NewSet[string](),
 		Status:       DEFAULT,
 		Ballot:       0,
 		Forced:       false,
@@ -66,7 +66,7 @@ func FromProposePb(fp *pb.Propose) Request {
 		Timestamp: fp.Timestamp,
 		Whitelist: gs.NewSet(fp.Whitelist...),
 		Ballot:    uint(fp.Ballot),
-		Pred:      gs.NewThreadUnsafeSet(fp.Pred...),
+		Pred:      gs.NewSet(fp.Pred...),
 	}
 }
 
