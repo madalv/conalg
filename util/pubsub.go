@@ -3,6 +3,8 @@ package util
 import (
 	"context"
 	"sync"
+
+	"github.com/gookit/slog"
 )
 
 type Publisher[T any] interface {
@@ -45,6 +47,7 @@ func (s *broadcastServer[T]) Publish(val T) {
 		select {
 		case listener <- val:
 		default:
+			slog.Errorf("Could not send %v to listener", val)
 		}
 	}
 }

@@ -21,7 +21,7 @@ var keyPool = []string{
 
 func sendRequest(url, payload string, wg *sync.WaitGroup) {
 	defer wg.Done()
-	time.Sleep(time.Duration(rand.Intn(15)) * time.Second)
+	// time.Sleep(time.Duration(rand.Intn(15)) * time.Second)
 
 	slog.Infof("Sending request to %s with payload %s", url, payload)
 
@@ -54,7 +54,7 @@ func main() {
 
 	startTime := time.Now()
 	timeout := 30 * time.Second
-	commandNr := 200
+	commandNr := 100
 	wg := sync.WaitGroup{}
 
 	for i := 1; i <= commandNr; i++ {

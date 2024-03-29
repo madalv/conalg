@@ -6,6 +6,7 @@ import (
 	"conalg/util"
 	"context"
 	"errors"
+	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/slog"
@@ -39,7 +40,7 @@ type Caesar struct {
 func NewCaesar(Cfg config.Config, transport Transport, app Application, analyzerOn bool) *Caesar {
 	slog.Info("Initializing Caesar Module")
 
-	return &Caesar{
+	c := &Caesar{
 		History:   cmap.New[model.Request](),
 		Ballots:   cmap.New[uint](),
 		Clock:     NewClock(uint64(len(Cfg.Nodes))),
@@ -53,6 +54,17 @@ func NewCaesar(Cfg config.Config, transport Transport, app Application, analyzer
 		Analyzer:        util.NewAnalyzer(analyzerOn),
 		AnalyzerEnabled: analyzerOn,
 	}
+
+	// TODO delete this
+	ticker := time.NewTicker(10 * time.Second)
+	go func(c *Caesar) {
+		for range ticker.C {
+			c.History.IterCb(func(k string, req model.Request) {
+				slog.Infof("Request %s: %s %d", req.ID, req.Status, req.Timestamp)
+			})
+		}
+	}(c)
+	return c
 }
 
 func (c *Caesar) Propose(payload []byte) {
@@ -160,6 +172,7 @@ func (c *Caesar) wait(id string, payload []byte, timestamp uint64) bool {
 		}
 
 		if update.Status == model.DECIDED || update.Status == model.STABLE {
+			slog.Debugf("----> Received update for %s: %v", id, update)
 
 			if !update.Pred.Contains(id) {
 				c.Publisher.CancelSubscription(ch)

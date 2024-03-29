@@ -41,6 +41,10 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 
 	slog.Debugf("-----------------> Published status update for %s %s %s", update.RequestID, update.Status, update.Pred.String())
 
+	if c.AnalyzerEnabled {
+		c.Analyzer.SendStable(req)
+	}
+
 	// break loop
 	err := c.breakLoop(req.ID)
 	for err != nil {
@@ -60,8 +64,8 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 			slog.Debugf("----> Received update for %s: %v", req.ID, update)
 			c.breakLoop(req.ID)
 			if c.deliverable(req.ID) {
+				c.Publisher.CancelSubscription(ch)
 				c.deliver(req.ID)
-				// c.Publisher.CancelSubscription(ch)
 				return nil
 			}
 		}

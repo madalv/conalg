@@ -92,7 +92,14 @@ func (c *Caesar) ReceiveFastPropose(fp model.Request) model.Response {
 
 	outcome := c.wait(req.ID, req.Payload, req.Timestamp)
 	slog.Debugf("Computed outcome for %s: %t", req.ID, outcome)
-	if !outcome {
+	req, ok := c.History.Get(fp.ID)
+	for !ok && !c.Decided.Contains(fp.ID) {
+		slog.Errorf("Request %s not found in history", fp.ID)
+		time.Sleep(10 * time.Millisecond)
+		req, ok = c.History.Get(fp.ID)
+	}
+
+	if !outcome && req.Status == model.FAST_PEND {
 		req.Status = model.REJ
 		req.Forced = false
 		c.History.Set(req.ID, req)

@@ -8,6 +8,11 @@ import (
 )
 
 func (c *Caesar) RetryPropose(req model.Request) {
+	req, _ = c.History.Get(req.ID)
+	if req.Status != model.REJ && req.Status != model.FAST_PEND {
+		slog.Fatalf("Request %s is not in REJECTED/FP state but in %s", req.ID, req.Status)
+		return
+	}
 	slog.Debugf("Retrying %s %s", req.Payload, req.ID)
 	c.Transport.BroadcastRetryPropose(&req)
 

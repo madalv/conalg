@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	gs "github.com/deckarep/golang-set/v2"
+	"github.com/gookit/slog"
 )
 
 const (
@@ -36,6 +37,13 @@ func NewResponse(reqID string, t string, status bool, pred gs.Set[string], from,
 }
 
 func FromResponsePb(pb *pb.Response) Response {
+	if pb == nil {
+		slog.Fatal("pb.Response is nil")
+		return Response{}
+	}
+	if pb.Pred == nil {
+		pb.Pred = []string{}
+	}
 	pred := gs.NewSet[string](pb.Pred...)
 	return Response{
 		From:      pb.From,
@@ -49,6 +57,9 @@ func FromResponsePb(pb *pb.Response) Response {
 }
 
 func ToResponsePb(r Response) *pb.Response {
+	if r.Pred == nil {
+		r.Pred = gs.NewSet[string]()
+	}
 	return &pb.Response{
 		ResquestId: r.RequestID,
 		Ballot:     uint64(r.Ballot),
