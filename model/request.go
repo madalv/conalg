@@ -53,7 +53,7 @@ func NewRequest(payload []byte, ts uint64, fq int, proposer uint64) Request {
 		Status:       DEFAULT,
 		Ballot:       0,
 		Forced:       false,
-		ResponseChan: make(chan Response, fq),
+		ResponseChan: make(chan Response, 1000),
 		ProposeTime:  time.Now(),
 		Proposer:     fmt.Sprintf("NODE_%d", proposer),
 		Whitelist:    gs.NewSet[string](),

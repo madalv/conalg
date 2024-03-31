@@ -200,7 +200,7 @@ func TestWait_Succesful(t *testing.T) {
 	}()
 
 	// Call the wait function
-	result := caesar.wait(id, payload, timestamp)
+	result, _ := caesar.wait(id, payload, timestamp)
 
 	// Assert the expected result
 	assert.True(t, result)
@@ -230,7 +230,7 @@ func TestWait_Unsuccessful(t *testing.T) {
 	}()
 
 	// Call the wait function
-	result := caesar.wait(id, payload, timestamp)
+	result, _ := caesar.wait(id, payload, timestamp)
 
 	// Assert the expected result
 	assert.False(t, result)

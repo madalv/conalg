@@ -24,7 +24,7 @@ func (c *Caesar) FastPropose(reqID string) {
 
 	for reply := range req.ResponseChan {
 		req, _ := c.History.Get(reqID)
-		slog.Debugf("Received %+v for %s ", reply, req.ID)
+		slog.Debugf("Received for %s reply %s %s %t %d %d", req.ID, reply.From, reply.Type, reply.Result, reply.Pred.Cardinality(), reply.Timestamp)
 
 		if reply.Type != model.FASTP_REPLY {
 			slog.Warnf("Received unexpected reply %+v for  %s ", reply, req.ID)
@@ -48,14 +48,14 @@ func (c *Caesar) FastPropose(reqID string) {
 			req.Timestamp = maxTimestamp
 			req.Pred = pred
 			c.History.Set(req.ID, req)
-			slog.Debugf("----- REPLIES have NACK. must RETRY.  req %s %s", req.Payload, req.ID)
+			slog.Debugf("----- REPLIES have NACK. must RETRY for %s ", req.ID)
 			go c.RetryPropose(req)
 			return
 		} else if len(replies) == c.Cfg.FastQuorum {
 			req.Timestamp = maxTimestamp
 			req.Pred = pred
 			c.History.Set(req.ID, req)
-			slog.Debugf("-----FQ REACHED ----- %s %s", req.Payload, req.ID)
+			slog.Debugf("-----FQ REACHED ----- for %s", req.ID)
 			c.StablePropose(req)
 			return
 		} else if time.Since(broadcastTime) >= 200*time.Millisecond && len(replies) == c.Cfg.ClassicQuorum {
@@ -63,50 +63,59 @@ func (c *Caesar) FastPropose(reqID string) {
 			req.Pred = pred
 			c.History.Set(req.ID, req)
 			// TODO send slow propose
-			slog.Debugf("----- CQ REACHED (timeout exceeded, slow proposing) ----- %s %s", req.Payload, req.ID)
+			slog.Debugf("----- CQ REACHED (timeout exceeded, slow proposing) ----- for %s", req.ID)
 			return
 		}
 	}
 }
 
-func (c *Caesar) ReceiveFastPropose(fp model.Request) model.Response {
-	slog.Debugf("Received Fast Propose %v", fp)
+func (c *Caesar) ReceiveFastPropose(fp model.Request) (model.Response, bool) {
+
+	slog.Debugf("Received Fast Propose for %s %s %s %d", fp.ID, fp.Payload, fp.Proposer, fp.Timestamp)
 	c.Ballots.Set(fp.ID, fp.Ballot)
 	c.Clock.SetTimestamp(fp.Timestamp)
 	var req model.Request
 
 	if !c.History.Has(fp.ID) {
-		slog.Debugf("Adding new request %s to history", fp.ID)
+		// slog.Debugf("Adding new request %s to history", fp.ID)
 		req = fp
 		c.History.Set(req.ID, req)
 	} else {
 		req, _ = c.History.Get(fp.ID)
 	}
 
-	req.Status = model.FAST_PEND
-	req.Forced = !req.Whitelist.IsEmpty()
-	req.Pred = c.computePred(req.ID, req.Payload, req.Timestamp, req.Whitelist)
-	slog.Debugf("Computed pred for %s: %v %s", req.ID, req.Pred, req.Status)
+	pred := c.computePred(req.ID, req.Payload, req.Timestamp, req.Whitelist)
+	slog.Debugf("Computed pred for %s: %d %s", req.ID, req.Pred.Cardinality(), req.Status)
 
-	c.History.Set(req.ID, req)
-
-	outcome := c.wait(req.ID, req.Payload, req.Timestamp)
-	slog.Debugf("Computed outcome for %s: %t", req.ID, outcome)
-	req, ok := c.History.Get(fp.ID)
-	for !ok && !c.Decided.Contains(fp.ID) {
-		slog.Errorf("Request %s not found in history", fp.ID)
-		time.Sleep(10 * time.Millisecond)
-		req, ok = c.History.Get(fp.ID)
+	req, _ = c.History.Get(fp.ID)
+	if req.Status == model.STABLE || req.Status == model.ACC {
+		return model.Response{}, false
 	}
 
-	if !outcome && req.Status == model.FAST_PEND {
+	req.Status = model.FAST_PEND
+	req.Forced = !req.Whitelist.IsEmpty()
+	req.Pred = pred
+	c.History.Set(req.ID, req)
+
+	outcome, aborted := c.wait(req.ID, req.Payload, req.Timestamp)
+	if aborted {
+		return model.Response{}, false
+	}
+	slog.Debugf("Computed outcome for %s: %t", req.ID, outcome)
+
+	req, _ = c.History.Get(fp.ID)
+	if req.Status == model.STABLE || req.Status == model.ACC {
+		return model.Response{}, false
+	}
+
+	if !outcome {
 		req.Status = model.REJ
 		req.Forced = false
 		c.History.Set(req.ID, req)
 		newTS := c.Clock.NewTimestamp()
 		newPred := c.computePred(req.ID, req.Payload, newTS, nil)
-		return model.NewResponse(req.ID, model.FASTP_REPLY, outcome, newPred, c.Cfg.ID, newTS, req.Ballot)
+		return model.NewResponse(req.ID, model.FASTP_REPLY, outcome, newPred, c.Cfg.ID, newTS, req.Ballot), true
 	} else {
-		return model.NewResponse(req.ID, model.FASTP_REPLY, outcome, req.Pred, c.Cfg.ID, req.Timestamp, req.Ballot)
+		return model.NewResponse(req.ID, model.FASTP_REPLY, outcome, req.Pred, c.Cfg.ID, req.Timestamp, req.Ballot), true
 	}
 }

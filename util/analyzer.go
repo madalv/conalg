@@ -74,7 +74,9 @@ func (a *Analyzer) SendStable(req model.Request) {
 }
 
 func (a *Analyzer) processStable(model.Request) {
+	a.mu.Lock()
 	a.nrStableRequests += 1
+	a.mu.Unlock()
 }
 
 func (a *Analyzer) processRequest(req model.Request) {
@@ -83,11 +85,9 @@ func (a *Analyzer) processRequest(req model.Request) {
 	deliveryDuration := now.Sub(req.StableTime)
 	proposalDuration := req.StableTime.Sub(req.ProposeTime)
 
-	a.mu.Lock()
 	a.totalDeliveryDuration += deliveryDuration.Milliseconds()
 	a.totalProposalDuration += proposalDuration.Milliseconds()
 	a.totalProcessingDuration += totalDuration.Milliseconds()
-	a.mu.Unlock()
 
 	a.nrRequests += 1
 	lastTs, ok := a.timestamps[string(req.Payload)]

@@ -16,8 +16,8 @@ the consensus module (aka Caesar module)
 */
 type Receiver interface {
 	ReceiveResponse(model.Response)
-	ReceiveFastPropose(model.Request) model.Response
-	ReceiveRetryPropose(model.Request) model.Response
+	ReceiveFastPropose(model.Request) (model.Response, bool)
+	ReceiveRetryPropose(model.Request) (model.Response, bool)
 	ReceiveStablePropose(model.Request) error
 }
 
@@ -28,7 +28,7 @@ type grpcTransport struct {
 	retryProposeChan  chan *model.Request
 	cfg               config.Config
 	receiver          Receiver
-	mu                sync.Mutex
+	mu                sync.RWMutex
 }
 
 func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
@@ -40,7 +40,7 @@ func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
 		stableProposeChan: make(chan *model.Request),
 		retryProposeChan:  make(chan *model.Request),
 		cfg:               cfg,
-		mu:                sync.Mutex{},
+		mu:                sync.RWMutex{},
 	}
 
 	go module.ListenFastProposeChan()
@@ -56,31 +56,31 @@ func (t *grpcTransport) SetReceiver(r Receiver) {
 
 func (t *grpcTransport) ListenFastProposeChan() {
 	for req := range t.fastProposeChan {
-		t.mu.Lock()
+		t.mu.RLock()
 		for _, client := range t.clients {
-			go client.sendFastPropose(req)
+			client.sendFastPropose(req)
 		}
-		t.mu.Unlock()
+		t.mu.RUnlock()
 	}
 }
 
 func (t *grpcTransport) ListenRetryProposeChan() {
 	for req := range t.retryProposeChan {
-		t.mu.Lock()
+		t.mu.RLock()
 		for _, client := range t.clients {
-			go client.sendRetryPropose(req)
+			client.sendRetryPropose(req)
 		}
-		t.mu.Unlock()
+		t.mu.RUnlock()
 	}
 }
 
 func (t *grpcTransport) ListenStableProposeChan() {
 	for req := range t.stableProposeChan {
-		t.mu.Lock()
+		t.mu.RLock()
 		for _, client := range t.clients {
-			go client.sendStablePropose(req)
+			client.sendStablePropose(req)
 		}
-		t.mu.Unlock()
+		t.mu.RUnlock()
 	}
 }
 

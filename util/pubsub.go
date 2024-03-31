@@ -14,15 +14,14 @@ type Publisher[T any] interface {
 }
 
 type broadcastServer[T any] struct {
-	source    chan T
 	listeners []chan T
-	mutex     sync.Mutex
+	mutex     sync.RWMutex
 }
 
 func (s *broadcastServer[T]) Subscribe() <-chan T {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	newListener := make(chan T)
+	newListener := make(chan T, 1000)
 	s.listeners = append(s.listeners, newListener)
 	return newListener
 }
@@ -41,22 +40,21 @@ func (s *broadcastServer[T]) CancelSubscription(channel <-chan T) {
 }
 
 func (s *broadcastServer[T]) Publish(val T) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 	for _, listener := range s.listeners {
 		select {
 		case listener <- val:
 		default:
-			slog.Errorf("Could not send %v to listener", val)
+			slog.Errorf("Could not send to listener")
 		}
 	}
 }
 
 func NewBroadcastServer[T any](ctx context.Context, source chan T) Publisher[T] {
 	service := &broadcastServer[T]{
-		source:    source,
 		listeners: make([]chan T, 0),
-		mutex:     sync.Mutex{},
+		mutex:     sync.RWMutex{},
 	}
 
 	return service
