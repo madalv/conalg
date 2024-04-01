@@ -156,7 +156,7 @@ waitgroup = all conflicting requests with a greater timestamp
 and that does NOT contain the request in its predecessor set
 */
 func (c *Caesar) wait(id string, payload []byte, timestamp uint64) (res bool, aborted bool) {
-	// slog.Debugf("Request %s is waiting", id)
+
 	waitlist, err := c.computeWaitlist(id, payload, timestamp)
 	if err != nil {
 		slog.Warnf("Auto NACK: %s", err)
@@ -172,6 +172,11 @@ func (c *Caesar) wait(id string, payload []byte, timestamp uint64) (res bool, ab
 	ch := c.Publisher.Subscribe()
 	defer c.Publisher.CancelSubscription(ch)
 
+	req, _ := c.History.Get(id)
+	if req.Status == model.STABLE || req.Status == model.ACC {
+		return false, true
+	}
+
 	for update := range ch {
 
 		if update.RequestID == id {
@@ -181,7 +186,7 @@ func (c *Caesar) wait(id string, payload []byte, timestamp uint64) (res bool, ab
 
 		if waitlist.Contains(update.RequestID) &&
 			(update.Status == model.ACC || update.Status == model.STABLE) {
-			// slog.Debugf("----> Received update for %s: %s %s %d", id, update.RequestID, update.Status, update.Pred.Cardinality())
+			slog.Debugf("----> Received update for %s: %s %s %d", id, update.RequestID, update.Status, update.Pred.Cardinality())
 
 			if !update.Pred.Contains(id) {
 				c.Publisher.CancelSubscription(ch)

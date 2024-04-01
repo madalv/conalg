@@ -15,18 +15,16 @@ func (c *Caesar) StablePropose(req model.Request) {
 
 func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 
-	slog.Debugf("Received stable propose for %s %s: %d", sp.ID, sp.Payload, sp.Pred.Cardinality())
+	slog.Debugf("Received stable propose for %s %s %d", sp.ID, sp.Payload, sp.Pred.Cardinality())
 
-	update := model.StatusUpdate{
-		RequestID: sp.ID,
-		Status:    "PRE_STABLE",
-	}
+	// update := model.StatusUpdate{
+	// 	RequestID: sp.ID,
+	// 	Status:    "PRE_STABLE",
+	// }
 
-	// slog.Debugf("-----------------> Trying to publish status update for %s %s", update.RequestID, update.Status)
+	// c.Publisher.Publish(update)
 
-	c.Publisher.Publish(update)
-
-	slog.Debugf("-----------------> Published status update for %s %s", update.RequestID, update.Status)
+	// slog.Debugf("-----------------> Published status update for %s %s", update.RequestID, update.Status)
 
 	c.Ballots.Set(sp.ID, sp.Ballot)
 	var req model.Request
@@ -42,13 +40,11 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	req.StableTime = time.Now()
 	c.History.Set(req.ID, req)
 
-	update = model.StatusUpdate{
+	update := model.StatusUpdate{
 		RequestID: req.ID,
 		Status:    model.STABLE,
 		Pred:      gs.NewSet[string](req.Pred.ToSlice()...),
 	}
-
-	// slog.Debugf("-----------------> Trying to publish status update for %s %s %d", update.RequestID, update.Status, update.Pred.Cardinality())
 
 	c.Publisher.Publish(update)
 

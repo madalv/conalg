@@ -16,11 +16,8 @@ const keyPool = [
   "key5",
 ];
 
-function chooseName(probOfConflict) {
-  if (Math.random() * 100 < probOfConflict) {
-    const randomIndex = Math.floor(Math.random() * keyPool.length);
-    return keyPool[randomIndex];
-  }
+function chooseName() {
+
   return `command${Math.floor(Math.random() * 50)}`;
 }
 
@@ -28,9 +25,9 @@ export const options = {
   scenarios: {
     constant_request_rate: {
       executor: 'constant-arrival-rate',
-      rate: 200,
-      timeUnit: '15s',
-      duration: '5s',
+      rate: 100,
+      timeUnit: '1s',
+      duration: '60s',
       preAllocatedVUs: 300,
     },
   },
@@ -39,7 +36,7 @@ export const options = {
 export default function () {
   const randomIndex = Math.floor(Math.random() * urls.length);
   const url = urls[randomIndex];
-  const payload = chooseName(70);
+  const payload = chooseName();
 
   console.log(`Sending request to ${url} with payload ${payload}`);
 

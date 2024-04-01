@@ -48,7 +48,7 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 			if err != nil {
 				slog.Error(err)
 			}
-			slog.Warnf("~~~ Sent Fast Propose Response for %s to %s", outcome.RequestID, outcome.From)
+			slog.Warnf("~~~ Sent Fast Propose Response for %s", outcome.RequestID)
 		}(stream, msg)
 	}
 }
@@ -56,7 +56,7 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 func (srv *grpcServer) RetryStream(stream pb.Conalg_RetryStreamServer) error {
 	for {
 		msg, err := stream.Recv()
-		slog.Warnf("~~~ Received Retry Propose for %s from %s", msg.RequestId, msg.From)
+		// slog.Warnf("~~~ Received Retry Propose for %s from %s", msg.RequestId, msg.From)
 		if err == io.EOF {
 			return nil
 		}
@@ -76,7 +76,7 @@ func (srv *grpcServer) RetryStream(stream pb.Conalg_RetryStreamServer) error {
 			if err != nil {
 				slog.Error(err)
 			}
-			slog.Warnf("~~~ Sent Retry Response for %s to %s", outcome.RequestID, outcome.From)
+			slog.Warnf("~~~ Sent Retry Response for %s", outcome.RequestID)
 		}(stream, msg)
 	}
 }
@@ -84,7 +84,7 @@ func (srv *grpcServer) RetryStream(stream pb.Conalg_RetryStreamServer) error {
 func (srv *grpcServer) StableStream(stream pb.Conalg_StableStreamServer) error {
 	for {
 		msg, err := stream.Recv()
-		slog.Warnf("~~~ Received Stable Propose for %s from %s", msg.RequestId, msg.From)
+		// slog.Warnf("~~~ Received Stable Propose for %s from %s", msg.RequestId, msg.From)
 		if err == io.EOF {
 			return nil
 		}

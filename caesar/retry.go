@@ -49,17 +49,14 @@ func (c *Caesar) ReceiveRetryPropose(rp model.Request) (model.Response, bool) {
 
 	slog.Debugf("Received retry propose for %s %s: %d", rp.ID, rp.Payload, rp.Pred.Cardinality())
 
-	update := model.StatusUpdate{
-		RequestID: rp.ID,
-		Status:    "PRE_ACCEPTED",
-	}
+	// update := model.StatusUpdate{
+	// 	RequestID: rp.ID,
+	// 	Status:    "PRE_ACCEPTED",
+	// }
 
+	// c.Publisher.Publish(update)
 
-	// slog.Debugf("-----------------> Trying to publish status update for %s %s", update.RequestID, update.Status)
-
-	c.Publisher.Publish(update)
-
-	slog.Debugf("-----------------> Published status update for %s %s", update.RequestID, update.Status)
+	// slog.Debugf("-----------------> Published status update for %s %s", update.RequestID, update.Status)
 
 	c.Ballots.Set(rp.ID, rp.Ballot)
 	req, ok := c.History.Get(rp.ID)
@@ -78,13 +75,11 @@ func (c *Caesar) ReceiveRetryPropose(rp model.Request) (model.Response, bool) {
 	req.Forced = false
 	c.History.Set(req.ID, req)
 
-	update = model.StatusUpdate{
+	update := model.StatusUpdate{
 		RequestID: req.ID,
 		Status:    model.ACC,
 		Pred:      gs.NewSet[string](req.Pred.ToSlice()...),
 	}
-
-	// slog.Debugf("-----------------> Trying to publish status update for %s %s %d", update.RequestID, update.Status, update.Pred.Cardinality())
 
 	c.Publisher.Publish(update)
 

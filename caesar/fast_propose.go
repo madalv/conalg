@@ -92,7 +92,7 @@ func (c *Caesar) ReceiveFastPropose(fp model.Request) (model.Response, bool) {
 		return model.Response{}, false
 	}
 
-	req.Status = model.FAST_PEND
+	// req.Status = model.FAST_PEND
 	req.Forced = !req.Whitelist.IsEmpty()
 	req.Pred = pred
 	c.History.Set(req.ID, req)

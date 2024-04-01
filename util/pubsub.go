@@ -23,6 +23,7 @@ func (s *broadcastServer[T]) Subscribe() <-chan T {
 	defer s.mutex.Unlock()
 	newListener := make(chan T, 1000)
 	s.listeners = append(s.listeners, newListener)
+	slog.Infof("Added listener - %d", len(s.listeners))
 	return newListener
 }
 
@@ -37,16 +38,23 @@ func (s *broadcastServer[T]) CancelSubscription(channel <-chan T) {
 			break
 		}
 	}
+	slog.Infof("Removed listener - %d", len(s.listeners))
 }
 
 func (s *broadcastServer[T]) Publish(val T) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
+	// slog.Info("->>>", val)
 	for _, listener := range s.listeners {
-		select {
-		case listener <- val:
-		default:
-			slog.Errorf("Could not send to listener")
+
+		if listener != nil {
+			select {
+			case listener <- val:
+			default:
+				slog.Errorf("Could not send to listener, it is full")
+			}
+		} else {
+			slog.Warnf("Channel nil")
 		}
 	}
 }
