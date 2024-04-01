@@ -76,6 +76,10 @@ func (c *Caesar) ReceiveFastPropose(fp model.Request) (model.Response, bool) {
 	c.Clock.SetTimestamp(fp.Timestamp)
 	var req model.Request
 
+	if c.Decided.Contains(fp.ID) {
+		return model.Response{}, false
+	}
+
 	if !c.History.Has(fp.ID) {
 		// slog.Debugf("Adding new request %s to history", fp.ID)
 		req = fp
@@ -92,6 +96,10 @@ func (c *Caesar) ReceiveFastPropose(fp model.Request) (model.Response, bool) {
 		return model.Response{}, false
 	}
 
+	if c.Decided.Contains(fp.ID) {
+		return model.Response{}, false
+	}
+	
 	// req.Status = model.FAST_PEND
 	req.Forced = !req.Whitelist.IsEmpty()
 	req.Pred = pred
