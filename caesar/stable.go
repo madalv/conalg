@@ -10,13 +10,23 @@ import (
 )
 
 func (c *Caesar) StablePropose(req model.Request) {
-	slog.Debugf("Stable Proposing %s", req.ID)
+	slog.Debugf("Stable Proposing for %s", req.ID)
 	c.Transport.BroadcastStablePropose(&req)
 }
 
 func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
-	// time.Sleep(5 * time.Second)
-	slog.Debugf("Received stable propose for %s %s: %+v", sp.ID, sp.Payload, sp)
+
+	slog.Debugf("Received stable propose for %s %s %d from ", sp.ID, sp.Payload, sp.Pred.Cardinality(), sp.Proposer)
+
+	// update := model.StatusUpdate{
+	// 	RequestID: sp.ID,
+	// 	Status:    "PRE_STABLE",
+	// }
+
+	// c.Publisher.Publish(update)
+
+	// slog.Debugf("-----------------> Published status update for %s %s", update.RequestID, update.Status)
+
 	c.Ballots.Set(sp.ID, sp.Ballot)
 	var req model.Request
 
@@ -39,7 +49,11 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 
 	c.Publisher.Publish(update)
 
-	slog.Debugf("-----------------> Published status update for %s %s %s", update.RequestID, update.Status, update.Pred.String())
+	slog.Debugf("-----------------> Published status update for %s %s %d", update.RequestID, update.Status, update.Pred.Cardinality())
+
+	if c.AnalyzerEnabled {
+		c.Analyzer.SendStable(req)
+	}
 
 	// break loop
 	err := c.breakLoop(req.ID)
@@ -57,11 +71,11 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	for update := range ch {
 		if req.Pred.Contains(update.RequestID) ||
 			update.Status == "PRED_REMOVAL" || update.Status == "DECIDED" {
-			slog.Debugf("----> Received update for %s: %v", req.ID, update)
+			// slog.Debugf("----> Received update for %s: %v", req.ID, update)
 			c.breakLoop(req.ID)
 			if c.deliverable(req.ID) {
+				c.Publisher.CancelSubscription(ch)
 				c.deliver(req.ID)
-				// c.Publisher.CancelSubscription(ch)
 				return nil
 			}
 		}
@@ -71,9 +85,8 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 }
 
 func (c *Caesar) deliver(id string) {
-
+	c.Decided.Add(id)
 	req, _ := c.History.Get(id)
-	c.Decided.Add(req.ID)
 
 	update := model.StatusUpdate{
 		RequestID: req.ID,
@@ -153,7 +166,7 @@ func (c *Caesar) deliverable(id string) bool {
 
 	res := pred.IsSubset(c.Decided)
 	if !res {
-		slog.Warnf("---> Request for %s not deliverable: %s", id, pred.Difference(c.Decided).String())
+		slog.Warnf("---> Request for %s not deliverable: %d", id, pred.Difference(c.Decided).Cardinality())
 	} else {
 		slog.Debugf("---> Request for %s deliverable", id)
 	}

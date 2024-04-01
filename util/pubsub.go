@@ -3,6 +3,8 @@ package util
 import (
 	"context"
 	"sync"
+
+	"github.com/gookit/slog"
 )
 
 type Publisher[T any] interface {
@@ -12,16 +14,16 @@ type Publisher[T any] interface {
 }
 
 type broadcastServer[T any] struct {
-	source    chan T
 	listeners []chan T
-	mutex     sync.Mutex
+	mutex     sync.RWMutex
 }
 
 func (s *broadcastServer[T]) Subscribe() <-chan T {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	newListener := make(chan T)
+	newListener := make(chan T, 1000)
 	s.listeners = append(s.listeners, newListener)
+	slog.Infof("Added listener - %d", len(s.listeners))
 	return newListener
 }
 
@@ -36,24 +38,31 @@ func (s *broadcastServer[T]) CancelSubscription(channel <-chan T) {
 			break
 		}
 	}
+	slog.Infof("Removed listener - %d", len(s.listeners))
 }
 
 func (s *broadcastServer[T]) Publish(val T) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	// slog.Info("->>>", val)
 	for _, listener := range s.listeners {
-		select {
-		case listener <- val:
-		default:
+
+		if listener != nil {
+			select {
+			case listener <- val:
+			default:
+				slog.Errorf("Could not send to listener, it is full")
+			}
+		} else {
+			slog.Warnf("Channel nil")
 		}
 	}
 }
 
 func NewBroadcastServer[T any](ctx context.Context, source chan T) Publisher[T] {
 	service := &broadcastServer[T]{
-		source:    source,
 		listeners: make([]chan T, 0),
-		mutex:     sync.Mutex{},
+		mutex:     sync.RWMutex{},
 	}
 
 	return service

@@ -6,6 +6,7 @@ import (
 	"conalg/util"
 	"context"
 	"errors"
+	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/slog"
@@ -34,12 +35,13 @@ type Caesar struct {
 	Decided         gs.Set[string]
 	Analyzer        *util.Analyzer
 	AnalyzerEnabled bool
+	ResponseChannel chan model.Response
 }
 
 func NewCaesar(Cfg config.Config, transport Transport, app Application, analyzerOn bool) *Caesar {
 	slog.Info("Initializing Caesar Module")
 
-	return &Caesar{
+	c := &Caesar{
 		History:   cmap.New[model.Request](),
 		Ballots:   cmap.New[uint](),
 		Clock:     NewClock(uint64(len(Cfg.Nodes))),
@@ -53,11 +55,24 @@ func NewCaesar(Cfg config.Config, transport Transport, app Application, analyzer
 		Analyzer:        util.NewAnalyzer(analyzerOn),
 		AnalyzerEnabled: analyzerOn,
 	}
+
+	// TODO delete this
+	ticker := time.NewTicker(10 * time.Second)
+	go func(c *Caesar) {
+		for range ticker.C {
+			c.History.IterCb(func(k string, req model.Request) {
+				if req.Status != model.STABLE {
+					slog.Infof("Request %s %s %d", req.ID, req.Status, req.Timestamp)
+				}
+			})
+		}
+	}(c)
+	return c
 }
 
 func (c *Caesar) Propose(payload []byte) {
 	req := model.NewRequest(payload, c.Clock.NewTimestamp(), c.Cfg.FastQuorum, c.Cfg.ID)
-	slog.Infof("Proposing %v", req)
+	slog.Infof("Proposing for %v", req.ID)
 	c.History.Set(req.ID, req)
 	go c.FastPropose(req.ID)
 }
@@ -99,12 +114,14 @@ func repliesHaveNack(replies map[string]model.Response) bool {
 }
 
 func (c *Caesar) ReceiveResponse(r model.Response) {
+	// slog.Warnf(" ~~~ Received response %s for %s", r.Type, r.RequestID)
 	req, ok := c.History.Get(r.RequestID)
 	if !ok {
 		slog.Warnf("Received response for unknown request %s", r.RequestID)
 		return
 	}
 	req.ResponseChan <- r
+	// slog.Warnf(" ~~~ Sent response %s for %s", r.Type, r.RequestID)
 }
 
 func (c *Caesar) computeWaitlist(reqID string, payload []byte, timestamp uint64) (gs.Set[string], error) {
@@ -138,33 +155,43 @@ does not contain the request in its predecessor set, then the request is NACKed.
 waitgroup = all conflicting requests with a greater timestamp
 and that does NOT contain the request in its predecessor set
 */
-func (c *Caesar) wait(id string, payload []byte, timestamp uint64) bool {
-	// slog.Debugf("Request %s is waiting", id)
+func (c *Caesar) wait(id string, payload []byte, timestamp uint64) (res bool, aborted bool) {
+
 	waitlist, err := c.computeWaitlist(id, payload, timestamp)
 	if err != nil {
 		slog.Warnf("Auto NACK: %s", err)
-		return false
+		return false, false
 	}
 
-	slog.Debugf("Request %s is waiting with waitlist %v", id, waitlist)
+	slog.Debugf("Request for %s is waiting with waitlist %v", id, waitlist)
 
 	if waitlist.IsEmpty() {
-		return true
+		return true, false
 	}
 
 	ch := c.Publisher.Subscribe()
+	defer c.Publisher.CancelSubscription(ch)
+
+	req, _ := c.History.Get(id)
+	if req.Status == model.STABLE || req.Status == model.ACC {
+		return false, true
+	}
 
 	for update := range ch {
-		if !waitlist.Contains(update.RequestID) {
-			continue
+
+		if update.RequestID == id {
+			slog.Warnf("Got update %s for %s while waiting, aborting...", update.Status, update.RequestID)
+			return false, true
 		}
 
-		if update.Status == model.DECIDED || update.Status == model.STABLE {
+		if waitlist.Contains(update.RequestID) &&
+			(update.Status == model.ACC || update.Status == model.STABLE) {
+			slog.Debugf("----> Received update for %s: %s %s %d", id, update.RequestID, update.Status, update.Pred.Cardinality())
 
 			if !update.Pred.Contains(id) {
 				c.Publisher.CancelSubscription(ch)
 				slog.Warnf("Request %s is DONE WAITING - false outcome", id)
-				return false
+				return false, false
 			} else {
 				waitlist.Remove(update.RequestID)
 			}
@@ -173,8 +200,8 @@ func (c *Caesar) wait(id string, payload []byte, timestamp uint64) bool {
 		if waitlist.IsEmpty() {
 			c.Publisher.CancelSubscription(ch)
 			slog.Warnf("Request %s  is DONE WAITING - true outcome", id)
-			return true
+			return true, false
 		}
 	}
-	return false
+	return false, false
 }

@@ -1,6 +1,7 @@
 syntax="proto3";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 package proto.conalg;
 option go_package="./pb";
 
@@ -13,6 +14,7 @@ message Propose {
   string request_id = 6;
   repeated string whitelist = 7;
   string type = 8;
+  google.protobuf.Timestamp proposer_time = 9;  
 }
 
 message Response {
