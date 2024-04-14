@@ -1,13 +1,13 @@
 package caesar
 
 import (
-	"conalg/config"
-	"conalg/model"
 	"testing"
 	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/slog"
+	"github.com/madalv/conalg/config"
+	"github.com/madalv/conalg/model"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/stretchr/testify/assert"
 )

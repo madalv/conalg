@@ -1,12 +1,12 @@
 package model
 
 import (
-	"conalg/pb"
 	"fmt"
 	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
+	"github.com/madalv/conalg/pb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

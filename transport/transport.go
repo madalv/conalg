@@ -1,12 +1,13 @@
 package transport
 
 import (
-	"conalg/config"
-	"conalg/model"
 	"net"
 	"sync"
 
+	"github.com/madalv/conalg/config"
+
 	"github.com/gookit/slog"
+	"github.com/madalv/conalg/model"
 )
 
 /*

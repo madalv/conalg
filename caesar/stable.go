@@ -1,12 +1,12 @@
 package caesar
 
 import (
-	"conalg/model"
 	"errors"
 	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/slog"
+	"github.com/madalv/conalg/model"
 )
 
 func (c *Caesar) StablePropose(req model.Request) {
@@ -166,7 +166,7 @@ func (c *Caesar) deliverable(id string) bool {
 
 	res := pred.IsSubset(c.Decided)
 	if !res {
-		slog.Warnf("---> Request for %s not deliverable: %d", id, pred.Difference(c.Decided).Cardinality())
+		slog.Debugf("---> Request for %s not deliverable: %d", id, pred.Difference(c.Decided).Cardinality())
 	} else {
 		slog.Debugf("---> Request for %s deliverable", id)
 	}

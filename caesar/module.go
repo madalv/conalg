@@ -1,11 +1,11 @@
 package caesar
 
 import (
-	"conalg/config"
-	"conalg/transport"
 	"time"
 
 	"github.com/gookit/slog"
+	"github.com/madalv/conalg/config"
+	"github.com/madalv/conalg/transport"
 )
 
 type Conalg interface {

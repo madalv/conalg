@@ -1,12 +1,12 @@
 package transport
 
 import (
-	"conalg/config"
-	"conalg/model"
-	"conalg/pb"
 	"io"
 
 	"github.com/gookit/slog"
+	"github.com/madalv/conalg/config"
+	"github.com/madalv/conalg/model"
+	"github.com/madalv/conalg/pb"
 	"google.golang.org/grpc"
 )
 
@@ -41,14 +41,14 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 		go func(stream pb.Conalg_FastProposeStreamServer, msg *pb.Propose) {
 			outcome, ok := srv.receiver.ReceiveFastPropose(model.FromProposePb(msg))
 			if !ok {
-				slog.Warnf("Fast Propose interrupted for %s", model.FromProposePb(msg).ID)
+				// slog.Warnf("Fast Propose interrupted for %s", model.FromProposePb(msg).ID)
 				return
 			}
 			err = stream.Send(model.ToResponsePb(outcome))
 			if err != nil {
 				slog.Error(err)
 			}
-			slog.Warnf("~~~ Sent Fast Propose Response for %s", outcome.RequestID)
+			// slog.Warnf("~~~ Sent Fast Propose Response for %s", outcome.RequestID)
 		}(stream, msg)
 	}
 }
@@ -76,7 +76,7 @@ func (srv *grpcServer) RetryStream(stream pb.Conalg_RetryStreamServer) error {
 			if err != nil {
 				slog.Error(err)
 			}
-			slog.Warnf("~~~ Sent Retry Response for %s", outcome.RequestID)
+			// slog.Warnf("~~~ Sent Retry Response for %s", outcome.RequestID)
 		}(stream, msg)
 	}
 }

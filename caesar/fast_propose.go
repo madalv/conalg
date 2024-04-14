@@ -1,11 +1,11 @@
 package caesar
 
 import (
-	"conalg/model"
 	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/slog"
+	"github.com/madalv/conalg/model"
 )
 
 // TODO separate model for propose from requests!!!
@@ -89,7 +89,7 @@ func (c *Caesar) ReceiveFastPropose(fp model.Request) (model.Response, bool) {
 	}
 
 	pred := c.computePred(req.ID, req.Payload, req.Timestamp, req.Whitelist)
-	slog.Debugf("Computed pred for %s: %d %s", req.ID, req.Pred.Cardinality(), req.Status)
+	slog.Debugf("Computed pred for %s: %d %s", req.ID, pred.Cardinality(), req.Status)
 
 	req, _ = c.History.Get(fp.ID)
 	if req.Status == model.STABLE || req.Status == model.ACC {
@@ -99,7 +99,7 @@ func (c *Caesar) ReceiveFastPropose(fp model.Request) (model.Response, bool) {
 	if c.Decided.Contains(fp.ID) {
 		return model.Response{}, false
 	}
-	
+
 	// req.Status = model.FAST_PEND
 	req.Forced = !req.Whitelist.IsEmpty()
 	req.Pred = pred

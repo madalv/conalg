@@ -1,11 +1,11 @@
 package model
 
 import (
-	"conalg/pb"
 	"fmt"
 
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/slog"
+	"github.com/madalv/conalg/pb"
 )
 
 const (

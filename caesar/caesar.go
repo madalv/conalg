@@ -1,15 +1,15 @@
 package caesar
 
 import (
-	"conalg/config"
-	"conalg/model"
-	"conalg/util"
 	"context"
 	"errors"
 	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/slog"
+	"github.com/madalv/conalg/config"
+	"github.com/madalv/conalg/model"
+	"github.com/madalv/conalg/util"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
@@ -72,7 +72,7 @@ func NewCaesar(Cfg config.Config, transport Transport, app Application, analyzer
 
 func (c *Caesar) Propose(payload []byte) {
 	req := model.NewRequest(payload, c.Clock.NewTimestamp(), c.Cfg.FastQuorum, c.Cfg.ID)
-	slog.Infof("Proposing for %v", req.ID)
+	slog.Debugf("Proposing for %v", req.ID)
 	c.History.Set(req.ID, req)
 	go c.FastPropose(req.ID)
 }
@@ -117,7 +117,7 @@ func (c *Caesar) ReceiveResponse(r model.Response) {
 	// slog.Warnf(" ~~~ Received response %s for %s", r.Type, r.RequestID)
 	req, ok := c.History.Get(r.RequestID)
 	if !ok {
-		slog.Warnf("Received response for unknown request %s", r.RequestID)
+		slog.Debugf("Received response for unknown request %s", r.RequestID)
 		return
 	}
 	req.ResponseChan <- r
@@ -159,11 +159,11 @@ func (c *Caesar) wait(id string, payload []byte, timestamp uint64) (res bool, ab
 
 	waitlist, err := c.computeWaitlist(id, payload, timestamp)
 	if err != nil {
-		slog.Warnf("Auto NACK: %s", err)
+		slog.Debugf("Auto NACK: %s", err)
 		return false, false
 	}
 
-	slog.Debugf("Request for %s is waiting with waitlist %v", id, waitlist)
+	slog.Debugf("Request for %s is waiting with waitlist %d", id, waitlist.Cardinality())
 
 	if waitlist.IsEmpty() {
 		return true, false
@@ -180,7 +180,7 @@ func (c *Caesar) wait(id string, payload []byte, timestamp uint64) (res bool, ab
 	for update := range ch {
 
 		if update.RequestID == id {
-			slog.Warnf("Got update %s for %s while waiting, aborting...", update.Status, update.RequestID)
+			slog.Debugf("Got update %s for %s while waiting, aborting...", update.Status, update.RequestID)
 			return false, true
 		}
 
@@ -190,7 +190,7 @@ func (c *Caesar) wait(id string, payload []byte, timestamp uint64) (res bool, ab
 
 			if !update.Pred.Contains(id) {
 				c.Publisher.CancelSubscription(ch)
-				slog.Warnf("Request %s is DONE WAITING - false outcome", id)
+				slog.Debugf("Request %s is DONE WAITING - false outcome", id)
 				return false, false
 			} else {
 				waitlist.Remove(update.RequestID)
@@ -199,7 +199,7 @@ func (c *Caesar) wait(id string, payload []byte, timestamp uint64) (res bool, ab
 
 		if waitlist.IsEmpty() {
 			c.Publisher.CancelSubscription(ch)
-			slog.Warnf("Request %s  is DONE WAITING - true outcome", id)
+			slog.Debugf("Request %s  is DONE WAITING - true outcome", id)
 			return true, false
 		}
 	}

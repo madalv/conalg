@@ -1,10 +1,9 @@
 package caesar
 
 import (
-	"conalg/model"
-
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/slog"
+	"github.com/madalv/conalg/model"
 )
 
 func (c *Caesar) RetryPropose(req model.Request) {

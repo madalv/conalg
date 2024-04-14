@@ -1,11 +1,11 @@
 package util
 
 import (
-	"conalg/model"
 	"sync"
 	"time"
 
 	"github.com/gookit/slog"
+	"github.com/madalv/conalg/model"
 )
 
 type Analyzer struct {

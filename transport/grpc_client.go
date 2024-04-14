@@ -1,12 +1,12 @@
 package transport
 
 import (
-	"conalg/model"
-	"conalg/pb"
 	"context"
 	"io"
 
 	"github.com/gookit/slog"
+	"github.com/madalv/conalg/model"
+	"github.com/madalv/conalg/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

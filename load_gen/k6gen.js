@@ -8,17 +8,10 @@ const urls = [
   // Add more URLs if needed
 ];
 
-const keyPool = [
-  "key1",
-  "key2",
-  "key3",
-  "key4",
-  "key5",
-];
 
 function chooseName() {
 
-  return `command${Math.floor(Math.random() * 50)}`;
+  return `command${Math.floor(Math.random() * 30)}`;
 }
 
 export const options = {
