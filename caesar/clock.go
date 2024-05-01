@@ -6,14 +6,12 @@ import (
 
 type Clock struct {
 	Timestamp uint64
-	NrNodes   uint64
 	Mutex     *sync.Mutex
 }
 
-func NewClock(nrNodes uint64) *Clock {
+func NewClock() *Clock {
 	return &Clock{
 		Timestamp: 0,
-		NrNodes:   nrNodes,
 		Mutex:     &sync.Mutex{},
 	}
 }
@@ -24,7 +22,7 @@ func (c *Clock) NewTimestamp() uint64 {
 	defer c.Mutex.Unlock()
 
 	newTS := c.Timestamp
-	c.Timestamp += c.NrNodes
+	c.Timestamp += 1
 	return newTS
 }
 
@@ -36,5 +34,5 @@ func (c *Clock) SetTimestamp(ts uint64) {
 	if ts <	 c.Timestamp {
 		return
 	}
-	c.Timestamp = ts + c.NrNodes
+	c.Timestamp += 1
 }

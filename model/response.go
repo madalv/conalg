@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	gs "github.com/deckarep/golang-set/v2"
-	"github.com/gookit/slog"
+	"log/slog"
 	"github.com/madalv/conalg/pb"
 )
 
@@ -38,7 +38,7 @@ func NewResponse(reqID string, t string, status bool, pred gs.Set[string], from,
 
 func FromResponsePb(pb *pb.Response) Response {
 	if pb == nil {
-		slog.Fatal("pb.Response is nil")
+		slog.Error("pb.Response is nil")
 		return Response{}
 	}
 	if pb.Pred == nil {

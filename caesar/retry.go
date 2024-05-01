@@ -1,18 +1,20 @@
 package caesar
 
 import (
+	"log/slog"
+
 	gs "github.com/deckarep/golang-set/v2"
-	"github.com/gookit/slog"
+	"github.com/madalv/conalg/config"
 	"github.com/madalv/conalg/model"
 )
 
 func (c *Caesar) RetryPropose(req model.Request) {
 	req, _ = c.History.Get(req.ID)
 	if req.Status == model.STABLE {
-		slog.Fatalf("Request %s is in %s", req.ID, req.Status)
+		slog.Error("Request has another status than STABLE", config.ID, req.ID, config.STATUS, req.Status)
 		return
 	}
-	slog.Debugf("Retrying for %s", req.ID)
+	slog.Debug("Retrying request", config.ID, req.ID)
 	c.Transport.BroadcastRetryPropose(&req)
 
 	replies := map[string]model.Response{}
@@ -24,10 +26,12 @@ func (c *Caesar) RetryPropose(req model.Request) {
 			continue
 		}
 
-		slog.Debugf("Received for %s reply %s %s %t %d %d", req.ID, reply.From, reply.Type, reply.Result, reply.Pred.Cardinality(), reply.Timestamp)
+		slog.Debug("Received reply", config.ID, req.ID, config.FROM, reply.From,
+			config.TYPE, reply.Type, config.RESULT, reply.Result, config.PRED, reply.Pred.Cardinality(),
+			config.TIMESTAMP, reply.Timestamp)
 
 		if _, ok := replies[reply.From]; ok {
-			slog.Warnf("Received duplicate reply %+v for %s %s ", reply, req.Payload, req.ID)
+			slog.Warn("Received duplicate reply", config.REPLY, reply, config.ID, req.ID)
 		} else {
 			replies[reply.From] = reply
 		}
@@ -37,7 +41,7 @@ func (c *Caesar) RetryPropose(req model.Request) {
 		}
 
 		if len(replies) == c.Cfg.ClassicQuorum {
-			slog.Debugf("----- CQ REACHED (retry successful) ----- %s for %s", req.Payload, req.ID)
+			slog.Debug("----- CQ REACHED (retry successful) -----", config.ID, req.ID)
 			c.StablePropose(req)
 			return
 		}
@@ -45,22 +49,12 @@ func (c *Caesar) RetryPropose(req model.Request) {
 }
 
 func (c *Caesar) ReceiveRetryPropose(rp model.Request) (model.Response, bool) {
-
-	slog.Debugf("Received retry propose for %s %s: %d", rp.ID, rp.Payload, rp.Pred.Cardinality())
-
-	// update := model.StatusUpdate{
-	// 	RequestID: rp.ID,
-	// 	Status:    "PRE_ACCEPTED",
-	// }
-
-	// c.Publisher.Publish(update)
-
-	// slog.Debugf("-----------------> Published status update for %s %s", update.RequestID, update.Status)
+	slog.Debug("Received Retry Propose", config.ID, rp.ID, config.FROM, rp.Proposer, config.TIMESTAMP, rp.Timestamp)
 
 	c.Ballots.Set(rp.ID, rp.Ballot)
 	req, ok := c.History.Get(rp.ID)
 	if !ok {
-		slog.Fatalf("Request %s not found in history", rp.ID)
+		slog.Error("Request not found in history", config.ID, rp.ID)
 	}
 
 	if req.Status == model.STABLE {
@@ -82,7 +76,8 @@ func (c *Caesar) ReceiveRetryPropose(rp model.Request) (model.Response, bool) {
 
 	c.Publisher.Publish(update)
 
-	slog.Debugf("-----------------> Published status update for %s %s %d", update.RequestID, update.Status, update.Pred.Cardinality())
+	slog.Debug("-----------------> Published status update", config.UPDATE_ID, update.RequestID,
+		config.UPDATE_STATUS, update.Status, config.UPDATE_PRED, update.Pred.Cardinality())
 
 	newPred := c.computePred(req.ID, req.Payload, req.Timestamp, nil)
 	for p := range req.Pred.Iter() {

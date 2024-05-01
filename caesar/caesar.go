@@ -3,10 +3,10 @@ package caesar
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
-	"github.com/gookit/slog"
 	"github.com/madalv/conalg/config"
 	"github.com/madalv/conalg/model"
 	"github.com/madalv/conalg/util"
@@ -39,12 +39,12 @@ type Caesar struct {
 }
 
 func NewCaesar(Cfg config.Config, transport Transport, app Application, analyzerOn bool) *Caesar {
-	slog.Info("Initializing Caesar Module")
+	slog.Info("Initializing Caesar Module!")
 
 	c := &Caesar{
 		History:   cmap.New[model.Request](),
 		Ballots:   cmap.New[uint](),
-		Clock:     NewClock(uint64(len(Cfg.Nodes))),
+		Clock:     NewClock(),
 		Cfg:       Cfg,
 		Transport: transport,
 		Executer:  app,
@@ -62,7 +62,7 @@ func NewCaesar(Cfg config.Config, transport Transport, app Application, analyzer
 		for range ticker.C {
 			c.History.IterCb(func(k string, req model.Request) {
 				if req.Status != model.STABLE {
-					slog.Infof("Request %s %s %d", req.ID, req.Status, req.Timestamp)
+					slog.Info("Request: ", config.ID, req.ID, config.STATUS, req.Status, config.TIMESTAMP, req.Timestamp)
 				}
 			})
 		}
@@ -72,14 +72,13 @@ func NewCaesar(Cfg config.Config, transport Transport, app Application, analyzer
 
 func (c *Caesar) Propose(payload []byte) {
 	req := model.NewRequest(payload, c.Clock.NewTimestamp(), c.Cfg.FastQuorum, c.Cfg.ID)
-	slog.Debugf("Proposing for %v", req.ID)
+	slog.Debug("Proposing", config.ID, req.ID)
 	c.History.Set(req.ID, req)
 	go c.FastPropose(req.ID)
 }
 
 // computePred computes the predecessor set for a request
 func (c *Caesar) computePred(reqID string, payload []byte, timestamp uint64, whitelist gs.Set[string]) (pred gs.Set[string]) {
-	// slog.Debug("Computing PRED: ", reqID, payload, timestamp, whitelist)
 	pred = gs.NewSet[string]()
 
 	if whitelist == nil {
@@ -114,14 +113,12 @@ func repliesHaveNack(replies map[string]model.Response) bool {
 }
 
 func (c *Caesar) ReceiveResponse(r model.Response) {
-	// slog.Warnf(" ~~~ Received response %s for %s", r.Type, r.RequestID)
 	req, ok := c.History.Get(r.RequestID)
 	if !ok {
-		slog.Debugf("Received response for unknown request %s", r.RequestID)
+		slog.Debug("Received response for unknown request", config.ID, r.RequestID)
 		return
 	}
 	req.ResponseChan <- r
-	// slog.Warnf(" ~~~ Sent response %s for %s", r.Type, r.RequestID)
 }
 
 func (c *Caesar) computeWaitlist(reqID string, payload []byte, timestamp uint64) (gs.Set[string], error) {
@@ -129,14 +126,12 @@ func (c *Caesar) computeWaitlist(reqID string, payload []byte, timestamp uint64)
 	var err error
 
 	c.History.IterCb(func(k string, req model.Request) {
-		// slog.Debug(req.ID, string(req.Payload), req.Timestamp, req.Status)
-
 		if reqID != req.ID &&
 			c.Executer.DetermineConflict(payload, req.Payload) &&
 			req.Timestamp > timestamp &&
 			!req.Pred.Contains(reqID) {
 			if req.Status == model.STABLE {
-				err = errors.New("auto NACK: stable request doesn't contain the request in its predecessor set")
+				err = errors.New("stable request doesn't contain the request in its predecessor set")
 			} else {
 				waitgroup.Add(req.ID)
 			}
@@ -159,11 +154,11 @@ func (c *Caesar) wait(id string, payload []byte, timestamp uint64) (res bool, ab
 
 	waitlist, err := c.computeWaitlist(id, payload, timestamp)
 	if err != nil {
-		slog.Debugf("Auto NACK: %s", err)
+		slog.Debug("Auto NACK", config.ERR, err)
 		return false, false
 	}
 
-	slog.Debugf("Request for %s is waiting with waitlist %d", id, waitlist.Cardinality())
+	slog.Debug("Request waiting", config.ID, id, config.WAITLIST, waitlist.Cardinality())
 
 	if waitlist.IsEmpty() {
 		return true, false
@@ -180,17 +175,17 @@ func (c *Caesar) wait(id string, payload []byte, timestamp uint64) (res bool, ab
 	for update := range ch {
 
 		if update.RequestID == id {
-			slog.Debugf("Got update %s for %s while waiting, aborting...", update.Status, update.RequestID)
+			slog.Debug("Got update while waiting, aborting...", config.UPDATE_STATUS, update.Status, config.UPDATE_ID, update.RequestID)
 			return false, true
 		}
 
 		if waitlist.Contains(update.RequestID) &&
 			(update.Status == model.ACC || update.Status == model.STABLE) {
-			slog.Debugf("----> Received update for %s: %s %s %d", id, update.RequestID, update.Status, update.Pred.Cardinality())
+			slog.Debug("----> Received update", config.ID, id, config.UPDATE_ID, update.RequestID, config.UPDATE_STATUS, update.Status, config.UPDATE_PRED, update.Pred.Cardinality())
 
 			if !update.Pred.Contains(id) {
 				c.Publisher.CancelSubscription(ch)
-				slog.Debugf("Request %s is DONE WAITING - false outcome", id)
+				slog.Debug("Request DONE WAITING", config.ID, id, config.OUTCOME, "false")
 				return false, false
 			} else {
 				waitlist.Remove(update.RequestID)
@@ -199,7 +194,7 @@ func (c *Caesar) wait(id string, payload []byte, timestamp uint64) (res bool, ab
 
 		if waitlist.IsEmpty() {
 			c.Publisher.CancelSubscription(ch)
-			slog.Debugf("Request %s  is DONE WAITING - true outcome", id)
+			slog.Debug("Request DONE WAITING", config.ID, id, config.OUTCOME, "true")
 			return true, false
 		}
 	}

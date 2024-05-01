@@ -4,7 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gookit/slog"
+	"log/slog"
+
 	"github.com/madalv/conalg/model"
 )
 
@@ -21,6 +22,7 @@ type Analyzer struct {
 	totalDeliveryDuration   int64
 	totalProposalDuration   int64
 	totalProcessingDuration int64
+	nrRequestsInOrder       int64
 	mu                      sync.Mutex
 }
 
@@ -52,12 +54,14 @@ func NewAnalyzer(active bool) *Analyzer {
 		go func() {
 			for range ticker.C {
 				a.mu.Lock()
-				slog.Infof("> Average total duration: %f ms", a.avgTotalDuration)
-				slog.Infof("> Average delivery duration: %f ms", a.avgDeliveryDuration)
-				slog.Infof("> Average proposal duration: %f ms", a.avgProposalDuration)
-				slog.Infof("> Number of requests processed: %d", a.nrRequests)
-				slog.Infof("> Number of stable requests processed: %d", a.nrStableRequests)
-				a.mu.Unlock()
+				if a.nrRequests > 0 {
+					slog.Info("> Average total duration (ms)", "avg_total", a.avgTotalDuration)
+					slog.Info("> Number of requests processed", "n_delivered", a.nrRequests)
+					slog.Info("> Number of stable requests processed", "n_stable", a.nrStableRequests)
+					slog.Info("> Percentage of requests in order", "percentage", float64(a.nrRequestsInOrder)/float64(a.nrRequests)*100)
+					a.mu.Unlock()
+				}
+
 			}
 		}()
 	}
@@ -96,8 +100,9 @@ func (a *Analyzer) processRequest(req model.Request) {
 	}
 
 	if req.Timestamp < lastTs {
-		slog.Warnf("Request %s has a timestamp %d smaller than the last conflicting one %d", req.ID, req.Timestamp, lastTs)
+		slog.Warn("Request has a timestamp smaller than the last conflicting", "id", req.ID, "ts", req.Timestamp, "last_ts", lastTs)
 	} else {
+		a.nrRequestsInOrder += 1
 		a.timestamps[string(req.Payload)] = req.Timestamp
 	}
 
@@ -108,7 +113,8 @@ func (a *Analyzer) processRequest(req model.Request) {
 	a.mu.Unlock()
 
 	if a.active {
-		slog.Infof("Request %s took %d ms stable->delivered, %d ms proposed->stable and %d ms in total. Timestamps: %d, last for payload %s: %d",
-			req.ID, deliveryDuration.Milliseconds(), proposalDuration.Milliseconds(), totalDuration.Milliseconds(), req.Timestamp, string(req.Payload), lastTs)
+		slog.Info("Request delivered with timestamps:",
+			"id", req.ID, "stable->delivered", deliveryDuration.Milliseconds(), "proposed->stable", proposalDuration.Milliseconds(),
+			"total", totalDuration.Milliseconds(), "ts", req.Timestamp, "payload", string(req.Payload), "last_ts", lastTs)
 	}
 }

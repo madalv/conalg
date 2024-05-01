@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gookit/slog"
+	"log/slog"
 	"github.com/joho/godotenv"
 )
 
@@ -21,7 +21,7 @@ type Config struct {
 func NewConfig(envpath string) Config {
 	if envpath != "" {
 		if err := godotenv.Load(envpath); err != nil {
-			slog.Fatal(err)
+			slog.Error(err.Error())
 		}
 	}
 
@@ -29,7 +29,7 @@ func NewConfig(envpath string) Config {
 	nodes := os.Getenv("NODES")
 	id, err := strconv.Atoi(os.Getenv("ID"))
 	if err != nil {
-		slog.Fatal(err)
+		slog.Error(err.Error())
 	}
 	nodesSplit := strings.Split(nodes, ",")
 	nrNodes := float64(len(nodesSplit))

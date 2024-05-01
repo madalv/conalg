@@ -4,34 +4,27 @@ import (
 	"errors"
 	"time"
 
+	"log/slog"
+
 	gs "github.com/deckarep/golang-set/v2"
-	"github.com/gookit/slog"
+	"github.com/madalv/conalg/config"
 	"github.com/madalv/conalg/model"
 )
 
 func (c *Caesar) StablePropose(req model.Request) {
-	slog.Debugf("Stable Proposing for %s", req.ID)
+	slog.Debug("Stable Proposing for", config.ID, req.ID)
 	c.Transport.BroadcastStablePropose(&req)
 }
 
 func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 
-	slog.Debugf("Received stable propose for %s %s %d from ", sp.ID, sp.Payload, sp.Pred.Cardinality(), sp.Proposer)
-
-	// update := model.StatusUpdate{
-	// 	RequestID: sp.ID,
-	// 	Status:    "PRE_STABLE",
-	// }
-
-	// c.Publisher.Publish(update)
-
-	// slog.Debugf("-----------------> Published status update for %s %s", update.RequestID, update.Status)
+	slog.Debug("Received Stable Propose", config.ID, sp.ID, config.FROM, sp.Proposer, config.TIMESTAMP, sp.Timestamp)
 
 	c.Ballots.Set(sp.ID, sp.Ballot)
 	var req model.Request
 
 	if !c.History.Has(sp.ID) {
-		slog.Errorf("Received stable propose for unknown request %+v", sp.ID)
+		slog.Error("Received stable propose for unknown request", config.ID, sp.ID)
 		req = sp
 	} else {
 		req, _ = c.History.Get(sp.ID)
@@ -49,7 +42,8 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 
 	c.Publisher.Publish(update)
 
-	slog.Debugf("-----------------> Published status update for %s %s %d", update.RequestID, update.Status, update.Pred.Cardinality())
+	slog.Debug("-----------------> Published status update", config.UPDATE_ID, update.RequestID,
+		config.UPDATE_STATUS, update.Status, config.UPDATE_PRED, update.Pred.Cardinality())
 
 	if c.AnalyzerEnabled {
 		c.Analyzer.SendStable(req)
@@ -58,7 +52,7 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	// break loop
 	err := c.breakLoop(req.ID)
 	for err != nil {
-		slog.Error(err)
+		slog.Error(err.Error())
 	}
 
 	if c.deliverable(req.ID) {
@@ -71,7 +65,6 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	for update := range ch {
 		if req.Pred.Contains(update.RequestID) ||
 			update.Status == "PRED_REMOVAL" || update.Status == "DECIDED" {
-			// slog.Debugf("----> Received update for %s: %v", req.ID, update)
 			c.breakLoop(req.ID)
 			if c.deliverable(req.ID) {
 				c.Publisher.CancelSubscription(ch)
@@ -95,10 +88,11 @@ func (c *Caesar) deliver(id string) {
 	}
 	c.Publisher.Publish(update)
 
-	slog.Debugf("-----------------> Published status update for %s %s %s", update.RequestID, update.Status, update.Pred.String())
+	slog.Debug("-----------------> Published status update", config.UPDATE_ID, update.RequestID,
+		config.UPDATE_STATUS, update.Status, config.UPDATE_PRED, update.Pred.Cardinality())
 	c.Executer.Execute(req.Payload)
 	c.History.Remove(req.ID)
-	slog.Debugf("Request %s %s delivered", req.Payload, req.ID)
+	slog.Debug("Request delivered", config.ID, req.ID)
 
 	if c.AnalyzerEnabled {
 		c.Analyzer.SendReq(req)
@@ -109,7 +103,7 @@ func (c *Caesar) breakLoop(id string) error {
 	// slog.Infof("Breaking loop for %s", id)
 	req, ok := c.History.Get(id)
 	if !ok {
-		slog.Errorf("Couldn't retrieve key %s", id)
+		slog.Error("Couldn't retrieve key", config.ID, id)
 		return errors.New("request not found")
 	}
 
@@ -121,31 +115,24 @@ func (c *Caesar) breakLoop(id string) error {
 		if !ok && c.Decided.Contains(predID) {
 			continue
 		} else if !ok {
-			slog.Errorf("Couldn't retrieve key %s", id)
+			slog.Error("Couldn't retrieve key", config.ID, id)
 			continue
 		}
 
 		if pred.Status == model.STABLE {
 
 			if pred.Timestamp < req.Timestamp && pred.Pred.Contains(id) {
-				// slog.Infof("-> Pred %s (TS %d) contains current request %s (TS %d)", predID, pred.Timestamp, req.ID, req.Timestamp)
 				pred.Pred.Remove(id)
 
 				c.History.Set(pred.ID, pred)
-
-				// slog.Infof("-> Removed %s from %s's pred", id, pred.ID)
 				update := model.StatusUpdate{
 					RequestID: pred.ID,
 					Status:    "PRED_REMOVAL",
 				}
-
 				c.Publisher.Publish(update)
-				// slog.Infof("-----------------> Published status update for %s %s", update.RequestID, update.Status)
 
 			} else if pred.Timestamp >= req.Timestamp {
-				// slog.Infof("-> Current request %s has a pred %s with higher timestamp %d", id, predID, pred.Timestamp)
 				newPredSet.Remove(predID)
-				// slog.Infof("-> Removed %s from %s's pred", predID, id)
 			}
 		}
 	}
@@ -158,7 +145,7 @@ func (c *Caesar) breakLoop(id string) error {
 func (c *Caesar) deliverable(id string) bool {
 	req, ok := c.History.Get(id)
 	if !ok {
-		slog.Errorf("Couldn't retrieve key %s", id)
+		slog.Error("Couldn't retrieve key", config.ID, id)
 		return false
 	}
 
@@ -166,9 +153,9 @@ func (c *Caesar) deliverable(id string) bool {
 
 	res := pred.IsSubset(c.Decided)
 	if !res {
-		slog.Debugf("---> Request for %s not deliverable: %d", id, pred.Difference(c.Decided).Cardinality())
+		slog.Debug("---> Request not deliverable", config.ID, id, config.DIFF, pred.Difference(c.Decided).Cardinality())
 	} else {
-		slog.Debugf("---> Request for %s deliverable", id)
+		slog.Debug("---> Request deliverable", config.ID, id)
 	}
 
 	return res

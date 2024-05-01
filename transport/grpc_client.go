@@ -4,7 +4,9 @@ import (
 	"context"
 	"io"
 
-	"github.com/gookit/slog"
+	"log/slog"
+
+	"github.com/madalv/conalg/config"
 	"github.com/madalv/conalg/model"
 	"github.com/madalv/conalg/pb"
 	"google.golang.org/grpc"
@@ -22,7 +24,7 @@ type grpcClient struct {
 }
 
 func newGRPCClient(addr string, rec Receiver, self bool) (*grpcClient, error) {
-	slog.Infof("Starting Client on %s", addr)
+	slog.Info("Starting Client", config.ADDR, addr)
 	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
@@ -30,20 +32,20 @@ func newGRPCClient(addr string, rec Receiver, self bool) (*grpcClient, error) {
 
 	client := pb.NewConalgClient(conn)
 
-	slog.Infof("Initializing Fast Propose Stream on %s", addr)
+	slog.Info("Initializing Fast Propose Stream", config.ADDR, addr)
 	fpStream, err := client.FastProposeStream(context.Background())
 	if err != nil {
-		slog.Fatal(err)
+		slog.Error(err.Error())
 	}
 
 	stableStream, err := client.StableStream(context.Background())
 	if err != nil {
-		slog.Fatal(err)
+		slog.Error(err.Error())
 	}
 
 	retryStream, err := client.RetryStream(context.Background())
 	if err != nil {
-		slog.Fatal(err)
+		slog.Error(err.Error())
 	}
 
 	c := &grpcClient{
@@ -62,47 +64,28 @@ func newGRPCClient(addr string, rec Receiver, self bool) (*grpcClient, error) {
 }
 
 func (c *grpcClient) sendFastPropose(req *model.Request) {
-	// if !c.self {
-	// 	time.Sleep(50 * time.Millisecond)
-	// }
 	err := c.fastProposeStream.Send(req.ToProposePb(model.FASTP_PROP))
 	if err != nil {
-		slog.Error(err)
+		slog.Error(err.Error())
 	}
 }
 
 func (c *grpcClient) sendStablePropose(req *model.Request) {
-	// slog.Warnf(`~~~ Trying to send Stable Propose for %s to %s`, req.ID, c.address)
-	// if !c.self {
-	// 	time.Sleep(50 * time.Millisecond)
-	// }
-
 	m := req.ToProposePb(model.RETRY_PROP)
-
-	// slog.Warnf(`~~~ Still trying to Retry Propose for %s to %s`, req.ID, c.address)
-
 	err := c.stableProposeStream.Send(m)
 	if err != nil {
-		slog.Error(err)
+		slog.Error(err.Error())
 	}
-	// slog.Warnf(`~~~ Sent Stable Propose for %s to %s`, req.ID, c.address)
 }
 
 func (c *grpcClient) sendRetryPropose(req *model.Request) {
-	// slog.Warnf(`~~~ Trying to send Retry Propose for %s to %s`, req.ID, c.address)
-	// if !c.self {
-	// 	time.Sleep(50 * time.Millisecond)
-	// }
-
 	m := req.ToProposePb(model.RETRY_PROP)
-
-	// slog.Warnf(`~~~ Still trying to Retry Propose for %s to %s`, req.ID, c.address)
 
 	err := c.retryProposeStream.Send(m)
 	if err != nil {
-		slog.Error(err)
+		slog.Error(err.Error())
+
 	}
-	// slog.Warnf(`~~~ Sent Retry Propose for %s to %s`, req.ID, c.address)
 }
 
 func (c *grpcClient) receiveRetryResponse() {
@@ -114,7 +97,7 @@ func (c *grpcClient) receiveRetryResponse() {
 			break
 		}
 		if err != nil {
-			slog.Error(err)
+			slog.Error(err.Error())
 		}
 
 		c.receiver.ReceiveResponse(model.FromResponsePb(msg))
@@ -130,7 +113,7 @@ func (c *grpcClient) receiveFastProposeResponse() {
 			break
 		}
 		if err != nil {
-			slog.Error(err)
+			slog.Error(err.Error())
 		}
 
 		c.receiver.ReceiveResponse(model.FromResponsePb(msg))

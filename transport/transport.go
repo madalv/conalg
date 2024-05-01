@@ -6,7 +6,7 @@ import (
 
 	"github.com/madalv/conalg/config"
 
-	"github.com/gookit/slog"
+	"log/slog"
 	"github.com/madalv/conalg/model"
 )
 
@@ -24,9 +24,6 @@ type Receiver interface {
 
 type grpcTransport struct {
 	clients           []*grpcClient
-	fastProposeChan   chan *model.Request
-	stableProposeChan chan *model.Request
-	retryProposeChan  chan *model.Request
 	cfg               config.Config
 	receiver          Receiver
 	mu                sync.RWMutex
@@ -37,52 +34,15 @@ func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
 
 	module := &grpcTransport{
 		clients:           []*grpcClient{},
-		fastProposeChan:   make(chan *model.Request),
-		stableProposeChan: make(chan *model.Request),
-		retryProposeChan:  make(chan *model.Request),
 		cfg:               cfg,
 		mu:                sync.RWMutex{},
 	}
-
-	go module.ListenFastProposeChan()
-	go module.ListenStableProposeChan()
-	go module.ListenRetryProposeChan()
 
 	return module, nil
 }
 
 func (t *grpcTransport) SetReceiver(r Receiver) {
 	t.receiver = r
-}
-
-func (t *grpcTransport) ListenFastProposeChan() {
-	for req := range t.fastProposeChan {
-		t.mu.RLock()
-		for _, client := range t.clients {
-			client.sendFastPropose(req)
-		}
-		t.mu.RUnlock()
-	}
-}
-
-func (t *grpcTransport) ListenRetryProposeChan() {
-	for req := range t.retryProposeChan {
-		t.mu.RLock()
-		for _, client := range t.clients {
-			client.sendRetryPropose(req)
-		}
-		t.mu.RUnlock()
-	}
-}
-
-func (t *grpcTransport) ListenStableProposeChan() {
-	for req := range t.stableProposeChan {
-		t.mu.RLock()
-		for _, client := range t.clients {
-			client.sendStablePropose(req)
-		}
-		t.mu.RUnlock()
-	}
 }
 
 func (t *grpcTransport) RunServer() error {
@@ -99,19 +59,31 @@ func (t *grpcTransport) RunServer() error {
 }
 
 func (t *grpcTransport) BroadcastFastPropose(req *model.Request) {
-	t.fastProposeChan <- req
+	t.mu.RLock()
+	for _, client := range t.clients {
+		client.sendFastPropose(req)
+	}
+	t.mu.RUnlock()
 }
 
 func (t *grpcTransport) BroadcastStablePropose(req *model.Request) {
-	t.stableProposeChan <- req
+	t.mu.RLock()
+	for _, client := range t.clients {
+		client.sendStablePropose(req)
+	}
+	t.mu.RUnlock()
 }
 
 func (t *grpcTransport) BroadcastRetryPropose(req *model.Request) {
-	t.retryProposeChan <- req
+	t.mu.RLock()
+	for _, client := range t.clients {
+		client.sendRetryPropose(req)
+	}
+	t.mu.RUnlock()
 }
 
 func (t *grpcTransport) ConnectToNodes() error {
-	slog.Info("Connecting to nodes")
+	slog.Info("Connecting to nodes. . .")
 	clients := make([]*grpcClient, 0, len(t.cfg.Nodes)+1)
 	for _, node := range t.cfg.Nodes {
 		c, err := newGRPCClient(node, t.receiver, false)
@@ -119,7 +91,6 @@ func (t *grpcTransport) ConnectToNodes() error {
 		if err != nil {
 			return err
 		}
-
 		clients = append(clients, c)
 	}
 

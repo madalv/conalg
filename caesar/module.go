@@ -3,7 +3,8 @@ package caesar
 import (
 	"time"
 
-	"github.com/gookit/slog"
+	"log/slog"
+
 	"github.com/madalv/conalg/config"
 	"github.com/madalv/conalg/transport"
 )
@@ -18,20 +19,14 @@ type Application interface {
 }
 
 func InitConalgModule(executer Application, envpath string, lvl slog.Level, analyzerOn bool) Conalg {
-
-	slog.Configure(func(logger *slog.SugaredLogger) {
-		f := logger.Formatter.(*slog.TextFormatter)
-		f.EnableColor = true
-	})
-
-	slog.SetLogLevel(lvl)
+	config.ConfigLogger(lvl)
 
 	cfg := config.NewConfig(envpath)
-	slog.Debug(cfg)
+	slog.Debug("CRead config", config.CFG, cfg)
 
 	transport, err := transport.NewGRPCTransport(cfg)
 	if err != nil {
-		slog.Fatal(err)
+		slog.Error("Failed to create transport", config.ERR, err)
 	}
 
 	caesarModule := NewCaesar(cfg, transport, executer, analyzerOn)

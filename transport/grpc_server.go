@@ -3,7 +3,8 @@ package transport
 import (
 	"io"
 
-	"github.com/gookit/slog"
+	"log/slog"
+
 	"github.com/madalv/conalg/config"
 	"github.com/madalv/conalg/model"
 	"github.com/madalv/conalg/pb"
@@ -17,7 +18,7 @@ type grpcServer struct {
 }
 
 func NewGRPCServer(cfg config.Config, r Receiver) *grpc.Server {
-	slog.Infof("Initializing gRPC Server .  .  .")
+	slog.Info("Initializing gRPC Server .  .  .")
 	s := grpc.NewServer()
 
 	pb.RegisterConalgServer(s, &grpcServer{cfg: cfg, receiver: r})
@@ -41,14 +42,12 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 		go func(stream pb.Conalg_FastProposeStreamServer, msg *pb.Propose) {
 			outcome, ok := srv.receiver.ReceiveFastPropose(model.FromProposePb(msg))
 			if !ok {
-				// slog.Warnf("Fast Propose interrupted for %s", model.FromProposePb(msg).ID)
 				return
 			}
 			err = stream.Send(model.ToResponsePb(outcome))
 			if err != nil {
-				slog.Error(err)
+				slog.Error(err.Error())
 			}
-			// slog.Warnf("~~~ Sent Fast Propose Response for %s", outcome.RequestID)
 		}(stream, msg)
 	}
 }
@@ -56,7 +55,6 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 func (srv *grpcServer) RetryStream(stream pb.Conalg_RetryStreamServer) error {
 	for {
 		msg, err := stream.Recv()
-		// slog.Warnf("~~~ Received Retry Propose for %s from %s", msg.RequestId, msg.From)
 		if err == io.EOF {
 			return nil
 		}
@@ -68,15 +66,14 @@ func (srv *grpcServer) RetryStream(stream pb.Conalg_RetryStreamServer) error {
 			outcome, ok := srv.receiver.ReceiveRetryPropose(model.FromProposePb(msg))
 
 			if !ok {
-				slog.Warnf("Retry interrupted for %s", model.FromProposePb(msg).ID)
+				slog.Warn("Retry interrupted for ", config.ID, model.FromProposePb(msg).ID)
 				return
 			}
 
 			err = stream.Send(model.ToResponsePb(outcome))
 			if err != nil {
-				slog.Error(err)
+				slog.Error(err.Error())
 			}
-			// slog.Warnf("~~~ Sent Retry Response for %s", outcome.RequestID)
 		}(stream, msg)
 	}
 }
@@ -84,7 +81,6 @@ func (srv *grpcServer) RetryStream(stream pb.Conalg_RetryStreamServer) error {
 func (srv *grpcServer) StableStream(stream pb.Conalg_StableStreamServer) error {
 	for {
 		msg, err := stream.Recv()
-		// slog.Warnf("~~~ Received Stable Propose for %s from %s", msg.RequestId, msg.From)
 		if err == io.EOF {
 			return nil
 		}
@@ -95,7 +91,7 @@ func (srv *grpcServer) StableStream(stream pb.Conalg_StableStreamServer) error {
 		go func(stream pb.Conalg_StableStreamServer, msg *pb.Propose) {
 			err := srv.receiver.ReceiveStablePropose(model.FromProposePb(msg))
 			if err != nil {
-				slog.Error(err)
+				slog.Error(err.Error())
 			}
 		}(stream, msg)
 	}

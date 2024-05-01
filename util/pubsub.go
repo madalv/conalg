@@ -4,7 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/gookit/slog"
+	"log/slog"
+
+	"github.com/madalv/conalg/config"
 )
 
 type Publisher[T any] interface {
@@ -23,7 +25,7 @@ func (s *broadcastServer[T]) Subscribe() <-chan T {
 	defer s.mutex.Unlock()
 	newListener := make(chan T, 10000)
 	s.listeners = append(s.listeners, newListener)
-	slog.Debugf("Added listener - %d", len(s.listeners))
+	slog.Debug("Added listener", config.NR_LIST, len(s.listeners))
 	return newListener
 }
 
@@ -38,7 +40,7 @@ func (s *broadcastServer[T]) CancelSubscription(channel <-chan T) {
 			break
 		}
 	}
-	slog.Debugf("Removed listener - %d", len(s.listeners))
+	slog.Debug("Removed listener", config.NR_LIST, len(s.listeners))
 }
 
 func (s *broadcastServer[T]) Publish(val T) {
@@ -51,10 +53,10 @@ func (s *broadcastServer[T]) Publish(val T) {
 			select {
 			case listener <- val:
 			default:
-				slog.Errorf("Could not send to listener, it is full")
+				slog.Error("Could not send to listener, it is full")
 			}
 		} else {
-			slog.Warnf("Channel nil")
+			slog.Warn("Channel nil")
 		}
 	}
 }

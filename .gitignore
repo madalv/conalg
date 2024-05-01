@@ -1,1 +1,8 @@
 .idea
+
+load_gen
+main.go
+Dockerfile
+*.yaml
+*.env
+Makefile

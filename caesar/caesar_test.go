@@ -5,7 +5,7 @@ import (
 	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
-	"github.com/gookit/slog"
+	"log/slog"
 	"github.com/madalv/conalg/config"
 	"github.com/madalv/conalg/model"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -17,12 +17,11 @@ type SampleApp struct {
 }
 
 func (s *SampleApp) DetermineConflict(c1, c2 []byte) bool {
-	slog.Debugf("Conflict determined: %s, %s = %v", c1, c2, len(c1) == len(c2))
 	return len(c1) == len(c2)
 }
 
 func (s *SampleApp) Execute(c []byte) {
-	slog.Infof(" ... doing whatever i want with %s", c)
+	slog.Info(" ... doing whatever i want with", "command", c)
 }
 
 func (s *SampleApp) SetConalgModule(m Conalg) {

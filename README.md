@@ -1,5 +1,13 @@
-## How to Integrate this BS
-For Irina :3
+**Note: this is still in progress and will probably be heavily modified!** 
+
+## How to Integrate
+For Irina & Marcel :3
+
+### Get the Module
+
+```
+go get github.com/madalv/conalg
+```
 
 ### .env
 
