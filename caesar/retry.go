@@ -11,7 +11,7 @@ import (
 func (c *Caesar) RetryPropose(req model.Request) {
 	req, _ = c.History.Get(req.ID)
 	if req.Status == model.STABLE {
-		slog.Error("Request has another status than STABLE", config.ID, req.ID, config.STATUS, req.Status)
+		slog.Warn("Request has another status than STABLE", config.ID, req.ID, config.STATUS, req.Status)
 		return
 	}
 	slog.Debug("Retrying request", config.ID, req.ID)
@@ -54,7 +54,7 @@ func (c *Caesar) ReceiveRetryPropose(rp model.Request) (model.Response, bool) {
 	c.Ballots.Set(rp.ID, rp.Ballot)
 	req, ok := c.History.Get(rp.ID)
 	if !ok {
-		slog.Error("Request not found in history", config.ID, rp.ID)
+		slog.Warn("Request not found in history", config.ID, rp.ID)
 	}
 
 	if req.Status == model.STABLE {

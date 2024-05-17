@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strconv"
 	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
@@ -38,21 +39,21 @@ type Caesar struct {
 	ResponseChannel chan model.Response
 }
 
-func NewCaesar(Cfg config.Config, transport Transport, app Application, analyzerOn bool) *Caesar {
+func NewCaesar(cfg config.Config, transport Transport, app Application, analyzerOn bool) *Caesar {
 	slog.Info("Initializing Caesar Module!")
 
 	c := &Caesar{
 		History:   cmap.New[model.Request](),
 		Ballots:   cmap.New[uint](),
 		Clock:     NewClock(),
-		Cfg:       Cfg,
+		Cfg:       cfg,
 		Transport: transport,
 		Executer:  app,
 		Decided:   gs.NewSet[string](),
 		Publisher: util.NewBroadcastServer[model.StatusUpdate](
 			context.Background(),
 			make(chan model.StatusUpdate)),
-		Analyzer:        util.NewAnalyzer(analyzerOn),
+		Analyzer:        util.NewAnalyzer(analyzerOn, strconv.Itoa(int(cfg.ID))),
 		AnalyzerEnabled: analyzerOn,
 	}
 

@@ -24,9 +24,11 @@ type Analyzer struct {
 	totalProcessingDuration int64
 	nrRequestsInOrder       int64
 	mu                      sync.Mutex
+	promMetrics             *Metrics
+	nodeID                  string
 }
 
-func NewAnalyzer(active bool) *Analyzer {
+func NewAnalyzer(active bool, nodeID string) *Analyzer {
 
 	a := &Analyzer{
 		reqChannel:    make(chan model.Request),
@@ -34,6 +36,8 @@ func NewAnalyzer(active bool) *Analyzer {
 		timestamps:    make(map[string]uint64),
 		active:        active,
 		mu:            sync.Mutex{},
+		nodeID:        nodeID,
+		promMetrics:   NewMetrics(),
 	}
 
 	go func() {
@@ -86,6 +90,10 @@ func (a *Analyzer) processStable(model.Request) {
 func (a *Analyzer) processRequest(req model.Request) {
 	now := time.Now()
 	totalDuration := now.Sub(req.ProposeTime)
+
+	// observe total duration of request!
+	a.promMetrics.duration.Observe(float64(totalDuration.Seconds()))
+
 	deliveryDuration := now.Sub(req.StableTime)
 	proposalDuration := req.StableTime.Sub(req.ProposeTime)
 

@@ -1,5 +1,6 @@
 .idea
 
+prometheus
 load_gen
 main.go
 Dockerfile

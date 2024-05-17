@@ -15,7 +15,7 @@ import (
 func (c *Caesar) FastPropose(reqID string) {
 	req, ok := c.History.Get(reqID)
 	if !ok {
-		slog.Error("Request not found in history", config.ID, reqID)
+		slog.Warn("Request not found in history", config.ID, reqID)
 	}
 	replies := map[string]model.Response{}
 	maxTimestamp := req.Timestamp
@@ -102,7 +102,7 @@ func (c *Caesar) ReceiveFastPropose(fp model.Request) (model.Response, bool) {
 		return model.Response{}, false
 	}
 
-	// req.Status = model.FAST_PEND
+	req.Status = model.FAST_PEND
 	req.Forced = !req.Whitelist.IsEmpty()
 	req.Pred = pred
 	c.History.Set(req.ID, req)

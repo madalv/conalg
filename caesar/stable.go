@@ -84,7 +84,7 @@ func (c *Caesar) deliver(id string) {
 	update := model.StatusUpdate{
 		RequestID: req.ID,
 		Status:    model.DECIDED,
-		Pred:      gs.NewSet[string](req.Pred.ToSlice()...),
+		Pred:      gs.NewSet(req.Pred.ToSlice()...),
 	}
 	c.Publisher.Publish(update)
 
@@ -100,7 +100,6 @@ func (c *Caesar) deliver(id string) {
 }
 
 func (c *Caesar) breakLoop(id string) error {
-	// slog.Infof("Breaking loop for %s", id)
 	req, ok := c.History.Get(id)
 	if !ok {
 		slog.Error("Couldn't retrieve key", config.ID, id)
@@ -108,19 +107,18 @@ func (c *Caesar) breakLoop(id string) error {
 	}
 
 	iterator := req.Pred.Iter()
-	newPredSet := gs.NewSet[string](req.Pred.ToSlice()...)
+	newPredSet := gs.NewSet(req.Pred.ToSlice()...)
 	for predID := range iterator {
 		pred, ok := c.History.Get(predID)
 
 		if !ok && c.Decided.Contains(predID) {
 			continue
 		} else if !ok {
-			slog.Error("Couldn't retrieve key", config.ID, id)
+			slog.Warn("Couldn't retrieve pred key", config.ID, predID)
 			continue
 		}
 
 		if pred.Status == model.STABLE {
-
 			if pred.Timestamp < req.Timestamp && pred.Pred.Contains(id) {
 				pred.Pred.Remove(id)
 
@@ -148,9 +146,7 @@ func (c *Caesar) deliverable(id string) bool {
 		slog.Error("Couldn't retrieve key", config.ID, id)
 		return false
 	}
-
-	pred := gs.NewSet[string](req.Pred.ToSlice()...)
-
+	pred := gs.NewSet(req.Pred.ToSlice()...)
 	res := pred.IsSubset(c.Decided)
 	if !res {
 		slog.Debug("---> Request not deliverable", config.ID, id, config.DIFF, pred.Difference(c.Decided).Cardinality())
