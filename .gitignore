@@ -1,6 +1,7 @@
 .idea
 
 prometheus
+grafana
 load_gen
 main.go
 Dockerfile

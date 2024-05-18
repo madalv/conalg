@@ -23,7 +23,7 @@ type broadcastServer[T any] struct {
 func (s *broadcastServer[T]) Subscribe() <-chan T {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	newListener := make(chan T, 10000)
+	newListener := make(chan T, 50000)
 	s.listeners = append(s.listeners, newListener)
 	slog.Debug("Added listener", config.NR_LIST, len(s.listeners))
 	return newListener

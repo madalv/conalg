@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log/slog"
 	"strconv"
-	"time"
 
 	gs "github.com/deckarep/golang-set/v2"
 	"github.com/madalv/conalg/config"
@@ -58,16 +57,6 @@ func NewCaesar(cfg config.Config, transport Transport, app Application, analyzer
 		AnalyzerEnabled: analyzerOn,
 	}
 
-	ticker := time.NewTicker(10 * time.Second)
-	go func(c *Caesar) {
-		for range ticker.C {
-			c.History.IterCb(func(k string, req model.Request) {
-				if req.Status != model.STABLE {
-					slog.Info("Request: ", config.ID, req.ID, config.STATUS, req.Status, config.TIMESTAMP, req.Timestamp)
-				}
-			})
-		}
-	}(c)
 	return c
 }
 

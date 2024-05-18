@@ -29,6 +29,7 @@ type Analyzer struct {
 }
 
 func NewAnalyzer(active bool, nodeID string) *Analyzer {
+	slog.Info("Created new Analyzer. . . ")
 
 	a := &Analyzer{
 		reqChannel:    make(chan model.Request),
@@ -92,7 +93,7 @@ func (a *Analyzer) processRequest(req model.Request) {
 	totalDuration := now.Sub(req.ProposeTime)
 
 	// observe total duration of request!
-	a.promMetrics.duration.Observe(float64(totalDuration.Seconds()))
+	a.promMetrics.duration.Observe(float64(totalDuration.Milliseconds()))
 
 	deliveryDuration := now.Sub(req.StableTime)
 	proposalDuration := req.StableTime.Sub(req.ProposeTime)
@@ -102,13 +103,19 @@ func (a *Analyzer) processRequest(req model.Request) {
 	a.totalProcessingDuration += totalDuration.Milliseconds()
 
 	a.nrRequests += 1
+	a.promMetrics.reqCounter.Inc()
+
+
+	inOrder := float64(a.nrRequestsInOrder)/float64(a.nrRequests)*100
+	a.promMetrics.inOrderPercentage.Set(inOrder)
+
 	lastTs, ok := a.timestamps[string(req.Payload)]
 	if !ok {
 		a.timestamps[string(req.Payload)] = req.Timestamp
 	}
 
 	if req.Timestamp < lastTs {
-		slog.Warn("Request has a timestamp smaller than the last conflicting", "id", req.ID, "ts", req.Timestamp, "last_ts", lastTs)
+		// slog.Warn("Request has a timestamp smaller than the last conflicting", "id", req.ID, "ts", req.Timestamp, "last_ts", lastTs)
 	} else {
 		a.nrRequestsInOrder += 1
 		a.timestamps[string(req.Payload)] = req.Timestamp
