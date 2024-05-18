@@ -17,6 +17,7 @@ import (
 type Transport interface {
 	BroadcastFastPropose(req *model.Request)
 	BroadcastStablePropose(req *model.Request)
+	BroadcastSlowPropose(req *model.Request)
 	BroadcastRetryPropose(req *model.Request)
 	RunServer() error
 	ConnectToNodes() error

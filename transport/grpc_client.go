@@ -18,6 +18,7 @@ type grpcClient struct {
 	fastProposeStream   pb.Conalg_FastProposeStreamClient
 	stableProposeStream pb.Conalg_StableStreamClient
 	retryProposeStream  pb.Conalg_RetryStreamClient
+	slowProposeStream   pb.Conalg_SlowProposeStreamClient
 	address             string
 	receiver            Receiver
 	self                bool
@@ -38,6 +39,11 @@ func newGRPCClient(addr string, rec Receiver, self bool) (*grpcClient, error) {
 		slog.Error(err.Error())
 	}
 
+	spStream, err := client.SlowProposeStream(context.Background())
+	if err != nil {
+		slog.Error(err.Error())
+	}
+
 	stableStream, err := client.StableStream(context.Background())
 	if err != nil {
 		slog.Error(err.Error())
@@ -53,6 +59,7 @@ func newGRPCClient(addr string, rec Receiver, self bool) (*grpcClient, error) {
 		fpStream,
 		stableStream,
 		retryStream,
+		spStream,
 		addr,
 		rec,
 		self,
@@ -60,11 +67,19 @@ func newGRPCClient(addr string, rec Receiver, self bool) (*grpcClient, error) {
 
 	go c.receiveFastProposeResponse()
 	go c.receiveRetryResponse()
+	go c.receiveSlowProposeResponse()
 	return c, nil
 }
 
 func (c *grpcClient) sendFastPropose(req *model.Request) {
 	err := c.fastProposeStream.Send(req.ToProposePb(model.FASTP_PROP))
+	if err != nil {
+		slog.Error(err.Error())
+	}
+}
+
+func (c *grpcClient) sendSlowPropose(req *model.Request) {
+	err := c.slowProposeStream.Send(req.ToProposePb(model.SLOWP_PROP))
 	if err != nil {
 		slog.Error(err.Error())
 	}
@@ -107,6 +122,22 @@ func (c *grpcClient) receiveRetryResponse() {
 func (c *grpcClient) receiveFastProposeResponse() {
 	for {
 		msg, err := c.fastProposeStream.Recv()
+
+		if err == io.EOF {
+			slog.Warn("EOF")
+			break
+		}
+		if err != nil {
+			slog.Error(err.Error())
+		}
+
+		c.receiver.ReceiveResponse(model.FromResponsePb(msg))
+	}
+}
+
+func (c *grpcClient) receiveSlowProposeResponse() {
+	for {
+		msg, err := c.slowProposeStream.Recv()
 
 		if err == io.EOF {
 			slog.Warn("EOF")

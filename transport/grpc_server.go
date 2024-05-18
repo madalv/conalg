@@ -52,6 +52,29 @@ func (srv *grpcServer) FastProposeStream(stream pb.Conalg_FastProposeStreamServe
 	}
 }
 
+func (srv *grpcServer) SlowProposeStream(stream pb.Conalg_SlowProposeStreamServer) error {
+	for {
+		msg, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		go func(stream pb.Conalg_SlowProposeStreamServer, msg *pb.Propose) {
+			outcome, ok := srv.receiver.ReceiveSlowPropose(model.FromProposePb(msg))
+			if !ok {
+				return
+			}
+			err = stream.Send(model.ToResponsePb(outcome))
+			if err != nil {
+				slog.Error(err.Error())
+			}
+		}(stream, msg)
+	}
+}
+
 func (srv *grpcServer) RetryStream(stream pb.Conalg_RetryStreamServer) error {
 	for {
 		msg, err := stream.Recv()

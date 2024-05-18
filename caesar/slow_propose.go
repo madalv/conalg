@@ -17,7 +17,7 @@ func (c *Caesar) SlowPropose(reqID string) {
 	maxTimestamp := req.Timestamp
 	pred := gs.NewSet[string]()
 
-	c.Transport.BroadcastFastPropose(&req)
+	c.Transport.BroadcastSlowPropose(&req)
 
 	for reply := range req.ResponseChan {
 		req, _ := c.History.Get(reqID)

@@ -7,6 +7,7 @@ import (
 	"github.com/madalv/conalg/config"
 
 	"log/slog"
+
 	"github.com/madalv/conalg/model"
 )
 
@@ -19,23 +20,24 @@ type Receiver interface {
 	ReceiveResponse(model.Response)
 	ReceiveFastPropose(model.Request) (model.Response, bool)
 	ReceiveRetryPropose(model.Request) (model.Response, bool)
+	ReceiveSlowPropose(model.Request) (model.Response, bool)
 	ReceiveStablePropose(model.Request) error
 }
 
 type grpcTransport struct {
-	clients           []*grpcClient
-	cfg               config.Config
-	receiver          Receiver
-	mu                sync.RWMutex
+	clients  []*grpcClient
+	cfg      config.Config
+	receiver Receiver
+	mu       sync.RWMutex
 }
 
 func NewGRPCTransport(cfg config.Config) (*grpcTransport, error) {
 	slog.Info("Initializing gRPC Transport Module")
 
 	module := &grpcTransport{
-		clients:           []*grpcClient{},
-		cfg:               cfg,
-		mu:                sync.RWMutex{},
+		clients: []*grpcClient{},
+		cfg:     cfg,
+		mu:      sync.RWMutex{},
 	}
 
 	return module, nil
@@ -62,6 +64,14 @@ func (t *grpcTransport) BroadcastFastPropose(req *model.Request) {
 	t.mu.RLock()
 	for _, client := range t.clients {
 		client.sendFastPropose(req)
+	}
+	t.mu.RUnlock()
+}
+
+func (t *grpcTransport) BroadcastSlowPropose(req *model.Request) {
+	t.mu.RLock()
+	for _, client := range t.clients {
+		client.sendSlowPropose(req)
 	}
 	t.mu.RUnlock()
 }
