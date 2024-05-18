@@ -58,7 +58,6 @@ func NewCaesar(cfg config.Config, transport Transport, app Application, analyzer
 		AnalyzerEnabled: analyzerOn,
 	}
 
-	// TODO delete this
 	ticker := time.NewTicker(10 * time.Second)
 	go func(c *Caesar) {
 		for range ticker.C {

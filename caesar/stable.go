@@ -23,7 +23,7 @@ func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
 	var req model.Request
 
 	if !c.History.Has(sp.ID) {
-		slog.Error("Received stable propose for unknown request", config.ID, sp.ID)
+		slog.Warn("Received stable propose for unknown request", config.ID, sp.ID)
 		req = sp
 	} else {
 		req, _ = c.History.Get(sp.ID)

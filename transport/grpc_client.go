@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"io"
+	"time"
 
 	"log/slog"
 
@@ -21,10 +22,11 @@ type grpcClient struct {
 	slowProposeStream   pb.Conalg_SlowProposeStreamClient
 	address             string
 	receiver            Receiver
-	self                bool
+	// ONLY FOR TESTING PURPOSES!!! SIMULATES TIME IN ONE DIRECTION!!!
+	isimulatedTime int
 }
 
-func newGRPCClient(addr string, rec Receiver, self bool) (*grpcClient, error) {
+func newGRPCClient(addr string, rec Receiver, time int) (*grpcClient, error) {
 	slog.Info("Starting Client", config.ADDR, addr)
 	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -62,7 +64,7 @@ func newGRPCClient(addr string, rec Receiver, self bool) (*grpcClient, error) {
 		spStream,
 		addr,
 		rec,
-		self,
+		time,
 	}
 
 	go c.receiveFastProposeResponse()
@@ -72,6 +74,7 @@ func newGRPCClient(addr string, rec Receiver, self bool) (*grpcClient, error) {
 }
 
 func (c *grpcClient) sendFastPropose(req *model.Request) {
+	time.Sleep(time.Duration(c.isimulatedTime) * time.Millisecond)
 	err := c.fastProposeStream.Send(req.ToProposePb(model.FASTP_PROP))
 	if err != nil {
 		slog.Error(err.Error())
@@ -86,6 +89,7 @@ func (c *grpcClient) sendSlowPropose(req *model.Request) {
 }
 
 func (c *grpcClient) sendStablePropose(req *model.Request) {
+	time.Sleep(time.Duration(c.isimulatedTime) * time.Millisecond)
 	m := req.ToProposePb(model.RETRY_PROP)
 	err := c.stableProposeStream.Send(m)
 	if err != nil {
@@ -94,8 +98,8 @@ func (c *grpcClient) sendStablePropose(req *model.Request) {
 }
 
 func (c *grpcClient) sendRetryPropose(req *model.Request) {
+	time.Sleep(time.Duration(c.isimulatedTime) * time.Millisecond)
 	m := req.ToProposePb(model.RETRY_PROP)
-
 	err := c.retryProposeStream.Send(m)
 	if err != nil {
 		slog.Error(err.Error())
@@ -115,7 +119,11 @@ func (c *grpcClient) receiveRetryResponse() {
 			slog.Error(err.Error())
 		}
 
-		c.receiver.ReceiveResponse(model.FromResponsePb(msg))
+		go func() {
+			time.Sleep(time.Duration(c.isimulatedTime) * time.Millisecond)
+			c.receiver.ReceiveResponse(model.FromResponsePb(msg))
+		}()
+
 	}
 }
 
@@ -131,7 +139,10 @@ func (c *grpcClient) receiveFastProposeResponse() {
 			slog.Error(err.Error())
 		}
 
-		c.receiver.ReceiveResponse(model.FromResponsePb(msg))
+		go func() {
+			time.Sleep(time.Duration(c.isimulatedTime) * time.Millisecond)
+			c.receiver.ReceiveResponse(model.FromResponsePb(msg))
+		}()
 	}
 }
 

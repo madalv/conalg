@@ -1,7 +1,11 @@
 package transport
 
 import (
+	"fmt"
 	"net"
+	"os"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/madalv/conalg/config"
@@ -63,7 +67,7 @@ func (t *grpcTransport) RunServer() error {
 func (t *grpcTransport) BroadcastFastPropose(req *model.Request) {
 	t.mu.RLock()
 	for _, client := range t.clients {
-		client.sendFastPropose(req)
+		go client.sendFastPropose(req)
 	}
 	t.mu.RUnlock()
 }
@@ -79,7 +83,7 @@ func (t *grpcTransport) BroadcastSlowPropose(req *model.Request) {
 func (t *grpcTransport) BroadcastStablePropose(req *model.Request) {
 	t.mu.RLock()
 	for _, client := range t.clients {
-		client.sendStablePropose(req)
+		go client.sendStablePropose(req)
 	}
 	t.mu.RUnlock()
 }
@@ -87,16 +91,26 @@ func (t *grpcTransport) BroadcastStablePropose(req *model.Request) {
 func (t *grpcTransport) BroadcastRetryPropose(req *model.Request) {
 	t.mu.RLock()
 	for _, client := range t.clients {
-		client.sendRetryPropose(req)
+		go client.sendRetryPropose(req)
 	}
 	t.mu.RUnlock()
 }
 
 func (t *grpcTransport) ConnectToNodes() error {
 	slog.Info("Connecting to nodes. . .")
+
+	envVar := os.Getenv("TIMES")
+
+	myMap := parseEnvVarToMap(envVar)
+	fmt.Println("Parsed map:", myMap)
+
 	clients := make([]*grpcClient, 0, len(t.cfg.Nodes)+1)
 	for _, node := range t.cfg.Nodes {
-		c, err := newGRPCClient(node, t.receiver, false)
+		time, err := strconv.Atoi(myMap[node])
+		if err != nil {
+			slog.Error(err.Error(), "val", myMap[node], "node", node)
+		}
+		c, err := newGRPCClient(node, t.receiver, time)
 
 		if err != nil {
 			return err
@@ -104,7 +118,7 @@ func (t *grpcTransport) ConnectToNodes() error {
 		clients = append(clients, c)
 	}
 
-	c, err := newGRPCClient(t.cfg.Port, t.receiver, true)
+	c, err := newGRPCClient(t.cfg.Port, t.receiver, 0)
 	if err != nil {
 		return err
 	}
@@ -115,4 +129,21 @@ func (t *grpcTransport) ConnectToNodes() error {
 	t.clients = clients
 	t.mu.Unlock()
 	return nil
+}
+
+func parseEnvVarToMap(envVar string) map[string]string {
+	result := make(map[string]string)
+	pairs := strings.Split(envVar, ",")
+
+	for _, pair := range pairs {
+		kv := strings.Split(pair, ">")
+		if len(kv) == 2 {
+			key := kv[0]
+			value := kv[1]
+			result[key] = value
+		} else {
+			fmt.Printf("Invalid pair: %s\n", pair)
+		}
+	}
+	return result
 }
