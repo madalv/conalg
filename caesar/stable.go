@@ -11,13 +11,12 @@ import (
 	"github.com/madalv/conalg/model"
 )
 
-func (c *Caesar) StablePropose(req model.Request) {
+func (c *Caesar) StablePropose(req *model.Request) {
 	slog.Debug("Stable Proposing for", config.ID, req.ID)
-	c.Transport.BroadcastStablePropose(&req)
+	c.Transport.BroadcastStablePropose(req)
 }
 
 func (c *Caesar) ReceiveStablePropose(sp model.Request) error {
-
 	slog.Debug("Received Stable Propose", config.ID, sp.ID, config.FROM, sp.Proposer, config.TIMESTAMP, sp.Timestamp)
 
 	c.Ballots.Set(sp.ID, sp.Ballot)

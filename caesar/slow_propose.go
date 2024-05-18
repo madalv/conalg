@@ -1,8 +1,6 @@
 package caesar
 
 import (
-	"time"
-
 	"log/slog"
 
 	gs "github.com/deckarep/golang-set/v2"
@@ -10,7 +8,7 @@ import (
 	"github.com/madalv/conalg/model"
 )
 
-func (c *Caesar) FastPropose(reqID string) {
+func (c *Caesar) SlowPropose(reqID string) {
 	req, ok := c.History.Get(reqID)
 	if !ok {
 		slog.Warn("Request not found in history", config.ID, reqID)
@@ -20,7 +18,6 @@ func (c *Caesar) FastPropose(reqID string) {
 	pred := gs.NewSet[string]()
 
 	c.Transport.BroadcastFastPropose(&req)
-	broadcastTime := time.Now()
 
 	for reply := range req.ResponseChan {
 		req, _ := c.History.Get(reqID)
@@ -57,53 +54,38 @@ func (c *Caesar) FastPropose(reqID string) {
 			req.Timestamp = maxTimestamp
 			req.Pred = pred
 			c.History.Set(req.ID, req)
-			slog.Debug("-----FQ REACHED ----- ", config.ID, req.ID)
+			slog.Debug("-----CQ REACHED ----- ", config.ID, req.ID)
 			c.StablePropose(&req)
-			return
-		} else if time.Since(broadcastTime) >= 100*time.Millisecond && len(replies) == c.Cfg.ClassicQuorum {
-			req.Timestamp = maxTimestamp
-			req.Pred = pred
-			c.History.Set(req.ID, req)
-			c.SlowPropose(req.ID)
-			slog.Debug("----- CQ REACHED (timeout exceeded, slow proposing) -----", config.ID, req.ID)
 			return
 		}
 	}
 }
 
-func (c *Caesar) ReceiveFastPropose(fp model.Request) (model.Response, bool) {
-	slog.Debug("Received Fast Propose", config.ID, fp.ID, config.FROM, fp.Proposer, config.TIMESTAMP, fp.Timestamp)
-	c.Ballots.Set(fp.ID, fp.Ballot)
-	c.Clock.SetTimestamp(fp.Timestamp)
+func (c *Caesar) ReceiveSlowPropose(sp model.Request) (model.Response, bool) {
+	slog.Debug("Received Slow Propose", config.ID, sp.ID, config.FROM, sp.Proposer, config.TIMESTAMP, sp.Timestamp)
+	c.Ballots.Set(sp.ID, sp.Ballot)
+	c.Clock.SetTimestamp(sp.Timestamp)
 	var req model.Request
 
-	if c.Decided.Contains(fp.ID) {
+	if c.Decided.Contains(sp.ID) {
 		return model.Response{}, false
 	}
 
-	if !c.History.Has(fp.ID) {
-		req = fp
+	if !c.History.Has(sp.ID) {
+		req = sp
 		c.History.Set(req.ID, req)
 	} else {
-		req, _ = c.History.Get(fp.ID)
+		req, _ = c.History.Get(sp.ID)
 	}
 
-	pred := c.computePred(req.ID, req.Payload, req.Timestamp, req.Whitelist)
-	slog.Debug("Computed pred", config.ID, req.ID, config.PRED, pred.Cardinality(), config.STATUS, req.Status)
-
-	req, _ = c.History.Get(fp.ID)
+	req, _ = c.History.Get(sp.ID)
 	if req.Status == model.STABLE || req.Status == model.ACC {
 		return model.Response{}, false
 	}
 
-	if c.Decided.Contains(fp.ID) {
+	if c.Decided.Contains(sp.ID) {
 		return model.Response{}, false
 	}
-
-	req.Status = model.FAST_PEND
-	req.Forced = !req.Whitelist.IsEmpty()
-	req.Pred = pred
-	c.History.Set(req.ID, req)
 
 	outcome, aborted := c.wait(req.ID, req.Payload, req.Timestamp)
 	if aborted {
@@ -111,7 +93,7 @@ func (c *Caesar) ReceiveFastPropose(fp model.Request) (model.Response, bool) {
 	}
 	slog.Debug("Computed outcome", config.ID, req.ID, config.OUTCOME, outcome)
 
-	req, _ = c.History.Get(fp.ID)
+	req, _ = c.History.Get(sp.ID)
 	if req.Status == model.STABLE || req.Status == model.ACC {
 		return model.Response{}, false
 	}
@@ -124,6 +106,9 @@ func (c *Caesar) ReceiveFastPropose(fp model.Request) (model.Response, bool) {
 		newPred := c.computePred(req.ID, req.Payload, newTS, nil)
 		return model.NewResponse(req.ID, model.FASTP_REPLY, outcome, newPred, c.Cfg.ID, newTS, req.Ballot), true
 	} else {
+		req.Status = model.SLOW_PEND
+		req.Forced = false
+		c.History.Set(req.ID, req)
 		return model.NewResponse(req.ID, model.FASTP_REPLY, outcome, req.Pred, c.Cfg.ID, req.Timestamp, req.Ballot), true
 	}
 }

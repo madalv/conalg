@@ -8,8 +8,8 @@ import (
 	"github.com/madalv/conalg/model"
 )
 
-func (c *Caesar) RetryPropose(req model.Request) {
-	req, _ = c.History.Get(req.ID)
+func (c *Caesar) RetryPropose(reqID string) {
+	req, _ := c.History.Get(reqID)
 	if req.Status == model.STABLE {
 		slog.Warn("Request has another status than STABLE", config.ID, req.ID, config.STATUS, req.Status)
 		return
@@ -42,7 +42,7 @@ func (c *Caesar) RetryPropose(req model.Request) {
 
 		if len(replies) == c.Cfg.ClassicQuorum {
 			slog.Debug("----- CQ REACHED (retry successful) -----", config.ID, req.ID)
-			c.StablePropose(req)
+			c.StablePropose(&req)
 			return
 		}
 	}
